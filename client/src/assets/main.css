@@ -1,0 +1,222 @@
+/* ========== 引入 Inter 字体 ========== */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ========== CSS 变量 ========== */
+:root {
+  /* 主色系 */
+  --color-primary: #2C6CF5;
+  --color-primary-light: #3B82F6;
+  --color-primary-dark: #1D4ED8;
+  --color-primary-50: #EFF6FF;
+  --color-primary-100: #DBEAFE;
+
+  /* 背景色 */
+  --bg-base: #F1F5F9;
+  --bg-card: #FFFFFF;
+
+  /* 文本色 */
+  --text-primary: #1E293B;
+  --text-secondary: #475569;
+  --text-muted: #94A3B8;
+  --text-light: #CBD5E1;
+
+  /* 圆角 */
+  --radius-card: 16px;
+  --radius-input: 12px;
+
+  /* 间距 */
+  --card-margin: 16px;
+  --card-padding: 20px;
+
+  /* 阴影 */
+  --shadow-medical: 0 1px 2px rgba(30, 41, 59, 0.04), 0 4px 12px rgba(30, 41, 59, 0.06);
+  --shadow-medical-lg: 0 2px 4px rgba(30, 41, 59, 0.04), 0 8px 24px rgba(30, 41, 59, 0.08);
+  --shadow-btn-glow: 0 4px 14px rgba(44, 108, 245, 0.35);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* ========== 基础排版 ========== */
+html {
+  font-size: 16px;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', 'PingFang SC', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.01em;
+  line-height: 1.5;
+}
+
+@media screen and (max-width: 375px) {
+  html {
+    font-size: 14px;
+  }
+}
+
+/* ========== Vant 组件深度覆盖 ========== */
+
+/* 主按钮：沉稳蓝 + 呼吸阴影 */
+.van-button--primary {
+  background: var(--color-primary) !important;
+  border: none !important;
+  height: 48px !important;
+  font-weight: 600 !important;
+  font-size: 16px !important;
+  letter-spacing: 0;
+  box-shadow: var(--shadow-btn-glow) !important;
+  transition: all 0.2s ease !important;
+}
+
+.van-button--primary:active {
+  background: var(--color-primary-dark) !important;
+  box-shadow: 0 2px 8px rgba(44, 108, 245, 0.3) !important;
+  transform: translateY(1px);
+}
+
+/* 小按钮（获取验证码） */
+.van-button--small.van-button--primary {
+  height: 32px !important;
+  box-shadow: none !important;
+  background: var(--color-primary) !important;
+}
+
+/* 输入框 - 圆角矩形样式，移除底边线 */
+.van-cell-group--inset {
+  margin: 0 !important;
+  border-radius: var(--radius-input) !important;
+  overflow: hidden;
+  background: #F8FAFC !important;
+}
+
+.van-cell {
+  background: transparent !important;
+  padding: 14px 16px !important;
+}
+
+.van-cell::after {
+  display: none !important; /* 移除底边线 */
+}
+
+.van-cell:not(:last-child) {
+  border-bottom: 1px solid #E2E8F0 !important;
+}
+
+.van-field__control {
+  font-size: 15px !important;
+  color: var(--text-primary) !important;
+}
+
+.van-field__control::placeholder {
+  color: var(--text-muted) !important;
+}
+
+.van-field__label {
+  color: var(--text-secondary) !important;
+  font-weight: 500 !important;
+  width: 70px !important;
+}
+
+/* 搜索框 */
+.van-search {
+  background: transparent !important;
+  padding: 12px 0 !important;
+}
+
+.van-search__content {
+  background: #F8FAFC !important;
+  border-radius: var(--radius-input) !important;
+  border: 1px solid #E2E8F0 !important;
+}
+
+.van-search__content--round {
+  border-radius: var(--radius-input) !important;
+}
+
+/* 底部导航 - 毛玻璃效果 + Logo 色系 */
+.van-tabbar {
+  background: rgba(255, 255, 255, 0.9) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border-top: 1px solid rgba(226, 232, 240, 0.5) !important;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.03) !important;
+}
+
+.van-tabbar-item {
+  color: #94A3B8 !important;
+  transition: color 0.25s ease !important;
+}
+
+.van-tabbar-item--active {
+  color: #7DBDE8 !important;
+}
+
+.van-tabbar-item--active .van-tabbar-item__icon {
+  color: #7DBDE8 !important;
+}
+
+/* 图标点击填充动画 */
+.van-tabbar-item__icon {
+  transition: all 0.25s ease !important;
+}
+
+.van-tabbar-item--active .van-tabbar-item__icon {
+  transform: scale(1.05);
+}
+
+/* 标签 */
+.van-tag--primary {
+  background: var(--color-primary-50) !important;
+  color: var(--color-primary) !important;
+  border: none !important;
+  font-weight: 500 !important;
+}
+
+.van-tag--danger {
+  background: #FEF2F2 !important;
+  color: #EF4444 !important;
+  border: none !important;
+  font-weight: 500 !important;
+}
+
+/* 通知栏 */
+.van-notice-bar {
+  border-radius: var(--radius-input) !important;
+  background: #FFFBEB !important;
+  color: #B45309 !important;
+}
+
+/* 加载器 */
+.van-loading__spinner {
+  color: var(--color-primary) !important;
+}
+
+/* 下拉选择 */
+.van-field__right-icon {
+  color: var(--text-muted) !important;
+}
+
+/* 弹出层 */
+.van-popup--round {
+  border-radius: 16px 16px 0 0 !important;
+}
+
+/* 对话框 */
+.van-dialog {
+  border-radius: var(--radius-card) !important;
+}
+
+.van-dialog__confirm {
+  color: var(--color-primary) !important;
+}
