@@ -4,35 +4,49 @@ export default {
   theme: {
     extend: {
       colors: {
-        // 主色系 - 沉稳蓝
-        primary: '#2563EB',
-        'primary-light': '#3B82F6',
-        'primary-dark': '#1D4ED8',
-        'primary-50': '#EFF6FF',
-        'primary-100': '#DBEAFE',
-        // 背景色 - 淡灰蓝
-        'bg-base': '#F1F5F9',
+        // 品牌控制色 - 皇家蓝
+        primary: '#396CFF',
+        'primary-light': '#5A85FF',
+        'primary-dark': '#2A54D9',
+        'primary-50': '#EEF2FF',
+        'primary-100': '#DCE4FF',
+        // 背景色 - 极浅冷灰蓝
+        'bg-base': '#F2F5FA',
         'bg-card': '#FFFFFF',
-        // 文本色 - 深蓝灰
-        'text-primary': '#1E293B',
-        'text-secondary': '#475569',
-        'text-muted': '#94A3B8',
-        'text-light': '#CBD5E1',
+        'bg-inner': '#F8FAFC',
+        // 文本色 - 极深藏青 + 冷灰紫蓝
+        'text-primary': '#1A2238',
+        'text-secondary': '#8A9AC3',
+        'text-muted': '#8A9AC3',
+        'text-light': '#B4C0DC',
+        // 警示色 - 玫瑰红
+        'alert-critical': '#FF4C61',
       },
       fontFamily: {
         sans: ['Inter', 'PingFang SC', 'SF Pro Display', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+        mono: ['SF Mono', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', 'monospace'],
       },
       boxShadow: {
-        // 轻盈的层叠投影 - medical shadow
-        'medical': '0 1px 2px rgba(30, 41, 59, 0.04), 0 4px 12px rgba(30, 41, 59, 0.06)',
-        'medical-lg': '0 2px 4px rgba(30, 41, 59, 0.04), 0 8px 24px rgba(30, 41, 59, 0.08)',
-        'medical-hover': '0 4px 8px rgba(30, 41, 59, 0.06), 0 12px 32px rgba(30, 41, 59, 0.1)',
-        // 按钮呼吸阴影
-        'btn-glow': '0 4px 14px rgba(37, 99, 235, 0.35)',
-        'btn-glow-hover': '0 6px 20px rgba(37, 99, 235, 0.45)',
+        // 空气感弥散阴影
+        'air': '0 4px 20px rgba(0, 0, 0, 0.02)',
+        'air-lg': '0 8px 30px rgba(0, 0, 0, 0.03)',
+        // 品牌蓝彩色投影
+        'brand': '0 8px 20px rgba(57, 108, 255, 0.3)',
+        'brand-hover': '0 10px 28px rgba(57, 108, 255, 0.4)',
+        // 保留 medical 兼容
+        'medical': '0 4px 20px rgba(0, 0, 0, 0.02)',
+        'medical-lg': '0 8px 30px rgba(0, 0, 0, 0.03)',
+        'medical-hover': '0 8px 30px rgba(0, 0, 0, 0.04)',
+        'btn-glow': '0 8px 20px rgba(57, 108, 255, 0.3)',
+        'btn-glow-hover': '0 10px 28px rgba(57, 108, 255, 0.4)',
       },
       borderRadius: {
-        'card': '16px',
+        // 极限圆角层级
+        'outer': '24px',
+        'inner': '16px',
+        'card': '24px',
+        'module': '12px',
+        'tag': '6px',
         'input': '12px',
       },
       spacing: {

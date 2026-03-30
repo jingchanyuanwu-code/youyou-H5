@@ -402,8 +402,17 @@
             <div class="unified-chart-header">
               <span class="chart-subtitle">{{ currentMetricLabel }} 趋势</span>
               <div class="chart-legend">
-                <span class="legend-item"><i class="dot normal"></i>正常</span>
-                <span class="legend-item"><i class="dot abnormal"></i>异常</span>
+                <template v-if="currentMetric === 'bp'">
+                  <span class="legend-item"><i class="dot-line solid"></i>收缩压（高压）</span>
+                  <span class="legend-item"><i class="dot-line dashed"></i>舒张压（低压）</span>
+                  <span class="legend-item"><i class="dot risk-red"></i>异常</span>
+                  <span class="legend-item"><i class="dot risk-green"></i>正常</span>
+                </template>
+                <template v-else>
+                  <span class="legend-item"><i class="dot risk-red"></i>高/极高风险</span>
+                  <span class="legend-item"><i class="dot risk-yellow"></i>中风险</span>
+                  <span class="legend-item"><i class="dot risk-green"></i>正常</span>
+                </template>
               </div>
             </div>
             <!-- 趋势图区域 -->
@@ -423,17 +432,86 @@
                     </pattern>
                   </defs>
                   <rect width="280" height="100" fill="url(#grid)" />
-                  <rect :y="safeZoneChartY" :height="safeZoneChartHeight" width="280" class="safe-zone-rect" />
-                  <polyline :points="chartPointsClinical" class="trend-line" fill="none" />
-                  <g v-for="(point, idx) in chartDataPointsClinical" :key="idx">
+                  <!-- 区间分界虚线 -->
+                  <line
+                    v-for="(bl, bIdx) in riskZoneBoundaryLines"
+                    :key="'bl-' + bIdx"
+                    x1="0" x2="280"
+                    :y1="bl.y" :y2="bl.y"
+                    :stroke="bl.color"
+                    stroke-width="0.5"
+                    stroke-dasharray="3,3"
+                  />
+                  <!-- 收缩压/主折线 -->
+                  <line
+                    v-for="(seg, sIdx) in chartSegmentsClinical"
+                    :key="'seg-' + sIdx"
+                    :x1="seg.x1" :y1="seg.y1" :x2="seg.x2" :y2="seg.y2"
+                    :stroke="seg.color"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                  <!-- 舒张压折线（仅血压模式） -->
+                  <template v-if="currentMetric === 'bp'">
+                    <line
+                      v-for="(seg, sIdx) in chartDiastolicSegments"
+                      :key="'dseg-' + sIdx"
+                      :x1="seg.x1" :y1="seg.y1" :x2="seg.x2" :y2="seg.y2"
+                      :stroke="seg.color"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-dasharray="4,2"
+                    />
+                  </template>
+                  <!-- 收缩压/主数据点 -->
+                  <g v-for="(point, idx) in chartDataPointsClinical" :key="'sp-' + idx">
+                    <!-- 异常点脉冲光晕 -->
+                    <circle
+                      v-if="point.riskColor !== '#10B981'"
+                      :cx="point.x"
+                      :cy="point.y"
+                      :r="6"
+                      :fill="point.riskColor"
+                      opacity="0.25"
+                      :class="['pulse-halo', point.riskColor === '#FF4C61' ? 'pulse-danger' : 'pulse-warning']"
+                    />
                     <circle
                       :cx="point.x"
                       :cy="point.y"
-                      :r="selectedChartPoint === idx ? 5 : 3.5"
-                      :class="['data-point', { abnormal: point.isAbnormal, selected: selectedChartPoint === idx }]"
+                      :r="selectedChartPoint === idx ? 5 : (point.riskColor !== '#10B981' ? 4.5 : 3.5)"
+                      :fill="point.riskColor"
+                      stroke="#FFFFFF"
+                      :stroke-width="selectedChartPoint === idx ? 2 : 1.5"
+                      style="cursor: pointer; transition: all 0.15s;"
                       @click="selectChartPoint(idx)"
                     />
                   </g>
+                  <!-- 舒张压数据点（仅血压模式） -->
+                  <template v-if="currentMetric === 'bp'">
+                    <g v-for="(point, idx) in chartDiastolicPoints" :key="'dp-' + idx">
+                      <!-- 异常点脉冲光晕 -->
+                      <circle
+                        v-if="point.riskColor !== '#10B981'"
+                        :cx="point.x"
+                        :cy="point.y"
+                        :r="6"
+                        :fill="point.riskColor"
+                        opacity="0.25"
+                        :class="['pulse-halo', point.riskColor === '#FF4C61' ? 'pulse-danger' : 'pulse-warning']"
+                      />
+                      <circle
+                        :cx="point.x"
+                        :cy="point.y"
+                        :r="point.riskColor !== '#10B981' ? 4.5 : 3.5"
+                        :fill="point.riskColor"
+                        stroke="#FFFFFF"
+                        stroke-width="1.5"
+                        style="transition: all 0.15s;"
+                      />
+                    </g>
+                  </template>
                 </svg>
                 <div class="chart-x-axis">
                   <span v-for="(label, idx) in chartXLabelsV3" :key="idx">{{ label }}</span>
@@ -1600,39 +1678,39 @@ const metricTabs = [
 const metricAnalysisConfig = {
   bp: {
     unit: 'mmHg',
-    yAxisMax: 180,
-    yAxisMid: 140,
-    yAxisMin: 100,
+    yAxisMax: 200,
+    yAxisMid: 130,
+    yAxisMin: 60,
     safeMin: 90,
-    safeMax: 140,
-    aiSummary7d: '血压近7日波动加剧，收缩压最高达 158mmHg（02/04 早），平均 132mmHg。清晨时段血压偏高，建议关注晨起后1小时内测量数据。',
-    aiSummary30d: '血压近30日整体呈下降趋势，从月初平均 142mmHg 降至 132mmHg。但仍有3次超过150mmHg的异常记录，需继续观察。',
-    average7d: '132',
-    average30d: '136',
-    compliance7d: 71,
-    compliance30d: 68,
-    max7d: '158',
-    max30d: '168',
-    min7d: '118',
-    min30d: '112',
+    safeMax: 160,
+    aiSummary7d: '血压近7日波动加剧，收缩压最高达 185mmHg（02/04 早），最低 85mmHg（02/06），波动范围大。建议关注晨起后1小时内测量数据，排查低血压诱因。',
+    aiSummary30d: '血压近30日波动剧烈，最高 192mmHg，最低 86mmHg。出现高危和极高危各一次，需评估用药方案。',
+    average7d: '140',
+    average30d: '144',
+    compliance7d: 57,
+    compliance30d: 50,
+    max7d: '185',
+    max30d: '192',
+    min7d: '85',
+    min30d: '86',
   },
   glucose: {
     unit: 'mmol/L',
-    yAxisMax: 12,
-    yAxisMid: 8,
-    yAxisMin: 4,
-    safeMin: 3.9,
-    safeMax: 7.0,
-    aiSummary7d: '空腹血糖控制尚不稳定，波动范围 5.8-9.2 mmol/L。餐后2小时血糖普遍偏高，峰值达 9.2 mmol/L，建议调整早餐结构。',
-    aiSummary30d: '血糖近30日有改善趋势，糖化血红蛋白估算值约 7.1%。但餐后血糖仍需加强管理，建议增加餐后运动。',
-    average7d: '6.8',
-    average30d: '7.2',
-    compliance7d: 62,
-    compliance30d: 55,
-    max7d: '9.2',
-    max30d: '10.5',
-    min7d: '5.2',
-    min30d: '4.8',
+    yAxisMax: 28,
+    yAxisMid: 14,
+    yAxisMin: 2,
+    safeMin: 5,
+    safeMax: 8,
+    aiSummary7d: '血糖近7日波动剧烈，最高达 26.5mmol/L（02/06），最低 3.5mmol/L（02/04 低血糖事件）。中风险和极高风险各出现，需立即评估胰岛素方案。',
+    aiSummary30d: '血糖近30日有改善趋势，但仍出现低血糖事件（3.8mmol/L），餐后血糖管理不佳。',
+    average7d: '9.1',
+    average30d: '7.3',
+    compliance7d: 43,
+    compliance30d: 50,
+    max7d: '26.5',
+    max30d: '14.2',
+    min7d: '3.5',
+    min30d: '3.8',
   },
   hr: {
     unit: 'bpm',
@@ -1676,40 +1754,40 @@ const metricAnalysisConfig = {
 const chartDataMock = {
   bp: {
     '7d': [
-      { date: '02/01', time: '02/01 08:00', value: 128, displayValue: '128', isAbnormal: false, status: 'normal', statusLabel: '正常' },
-      { date: '02/02', time: '02/02 07:45', value: 135, displayValue: '135', isAbnormal: false, status: 'normal', statusLabel: '正常' },
-      { date: '02/03', time: '02/03 08:15', value: 142, displayValue: '142', isAbnormal: true, status: 'high', statusLabel: '偏高' },
-      { date: '02/04', time: '02/04 07:30', value: 158, displayValue: '158', isAbnormal: true, status: 'critical', statusLabel: '极高' },
-      { date: '02/05', time: '02/05 08:00', value: 138, displayValue: '138', isAbnormal: false, status: 'normal', statusLabel: '正常' },
-      { date: '02/06', time: '02/06 08:30', value: 128, displayValue: '128', isAbnormal: false, status: 'normal', statusLabel: '正常' },
-      { date: '今日', time: '今日 08:30', value: 126, displayValue: '126', isAbnormal: false, status: 'normal', statusLabel: '正常' },
+      { date: '02/01', time: '02/01 08:00', value: 132, diastolic: 84, displayValue: '132/84', isAbnormal: false, status: 'normal', statusLabel: '正常' },
+      { date: '02/02', time: '02/02 07:45', value: 142, diastolic: 92, displayValue: '142/92', isAbnormal: false, status: 'normal', statusLabel: '正常' },
+      { date: '02/03', time: '02/03 08:15', value: 168, diastolic: 108, displayValue: '168/108', isAbnormal: true, status: 'medium', statusLabel: '中风险' },
+      { date: '02/04', time: '02/04 07:30', value: 185, diastolic: 122, displayValue: '185/122', isAbnormal: true, status: 'critical', statusLabel: '高风险' },
+      { date: '02/05', time: '02/05 08:00', value: 138, diastolic: 88, displayValue: '138/88', isAbnormal: false, status: 'normal', statusLabel: '正常' },
+      { date: '02/06', time: '02/06 08:30', value: 85, diastolic: 56, displayValue: '85/56', isAbnormal: true, status: 'critical', statusLabel: '极高风险' },
+      { date: '今日', time: '今日 08:30', value: 128, diastolic: 82, displayValue: '128/82', isAbnormal: false, status: 'normal', statusLabel: '正常' },
     ],
     '30d': [
-      { date: '01/08', time: '01/08', value: 145, displayValue: '145', isAbnormal: true, status: 'high', statusLabel: '偏高' },
-      { date: '01/15', time: '01/15', value: 168, displayValue: '168', isAbnormal: true, status: 'critical', statusLabel: '极高' },
-      { date: '01/22', time: '01/22', value: 138, displayValue: '138', isAbnormal: false, status: 'normal', statusLabel: '正常' },
-      { date: '01/29', time: '01/29', value: 142, displayValue: '142', isAbnormal: true, status: 'high', statusLabel: '偏高' },
-      { date: '02/03', time: '02/03', value: 135, displayValue: '135', isAbnormal: false, status: 'normal', statusLabel: '正常' },
-      { date: '今日', time: '今日', value: 128, displayValue: '128', isAbnormal: false, status: 'normal', statusLabel: '正常' },
+      { date: '01/08', time: '01/08', value: 148, diastolic: 95, displayValue: '148/95', isAbnormal: false, status: 'normal', statusLabel: '正常' },
+      { date: '01/15', time: '01/15', value: 178, diastolic: 115, displayValue: '178/115', isAbnormal: true, status: 'medium', statusLabel: '中风险' },
+      { date: '01/22', time: '01/22', value: 192, diastolic: 126, displayValue: '192/126', isAbnormal: true, status: 'critical', statusLabel: '高风险' },
+      { date: '01/29', time: '01/29', value: 130, diastolic: 84, displayValue: '130/84', isAbnormal: false, status: 'normal', statusLabel: '正常' },
+      { date: '02/03', time: '02/03', value: 86, diastolic: 58, displayValue: '86/58', isAbnormal: true, status: 'critical', statusLabel: '极高风险' },
+      { date: '今日', time: '今日', value: 128, diastolic: 82, displayValue: '128/82', isAbnormal: false, status: 'normal', statusLabel: '正常' },
     ],
   },
   glucose: {
     '7d': [
-      { date: '02/01', time: '02/01 07:00', value: 6.5, displayValue: '6.5', isAbnormal: false, status: 'normal', statusLabel: '正常' },
-      { date: '02/02', time: '02/02 07:15', value: 5.8, displayValue: '5.8', isAbnormal: false, status: 'normal', statusLabel: '正常' },
-      { date: '02/03', time: '02/03 07:20', value: 7.8, displayValue: '7.8', isAbnormal: true, status: 'high', statusLabel: '偏高' },
-      { date: '02/04', time: '02/04 07:00', value: 9.2, displayValue: '9.2', isAbnormal: true, status: 'critical', statusLabel: '极高' },
-      { date: '02/05', time: '02/05 06:50', value: 6.8, displayValue: '6.8', isAbnormal: false, status: 'normal', statusLabel: '正常' },
-      { date: '02/06', time: '02/06 07:10', value: 7.2, displayValue: '7.2', isAbnormal: true, status: 'high', statusLabel: '偏高' },
-      { date: '今日', time: '今日 07:15', value: 6.2, displayValue: '6.2', isAbnormal: false, status: 'normal', statusLabel: '正常' },
+      { date: '02/01', time: '02/01 07:00', value: 6.2, displayValue: '6.2', isAbnormal: false, status: 'normal', statusLabel: '正常' },
+      { date: '02/02', time: '02/02 07:15', value: 4.5, displayValue: '4.5', isAbnormal: true, status: 'medium', statusLabel: '中风险' },
+      { date: '02/03', time: '02/03 07:20', value: 9.8, displayValue: '9.8', isAbnormal: true, status: 'high', statusLabel: '高风险' },
+      { date: '02/04', time: '02/04 07:00', value: 3.5, displayValue: '3.5', isAbnormal: true, status: 'critical', statusLabel: '极高风险' },
+      { date: '02/05', time: '02/05 06:50', value: 7.2, displayValue: '7.2', isAbnormal: false, status: 'normal', statusLabel: '正常' },
+      { date: '02/06', time: '02/06 07:10', value: 26.5, displayValue: '26.5', isAbnormal: true, status: 'critical', statusLabel: '极高风险' },
+      { date: '今日', time: '今日 07:15', value: 5.8, displayValue: '5.8', isAbnormal: false, status: 'normal', statusLabel: '正常' },
     ],
     '30d': [
-      { date: '01/08', time: '01/08', value: 8.5, displayValue: '8.5', isAbnormal: true, status: 'high', statusLabel: '偏高' },
-      { date: '01/15', time: '01/15', value: 10.5, displayValue: '10.5', isAbnormal: true, status: 'critical', statusLabel: '极高' },
-      { date: '01/22', time: '01/22', value: 7.2, displayValue: '7.2', isAbnormal: true, status: 'high', statusLabel: '偏高' },
-      { date: '01/29', time: '01/29', value: 6.8, displayValue: '6.8', isAbnormal: false, status: 'normal', statusLabel: '正常' },
-      { date: '02/03', time: '02/03', value: 7.5, displayValue: '7.5', isAbnormal: true, status: 'high', statusLabel: '偏高' },
-      { date: '今日', time: '今日', value: 6.2, displayValue: '6.2', isAbnormal: false, status: 'normal', statusLabel: '正常' },
+      { date: '01/08', time: '01/08', value: 8.5, displayValue: '8.5', isAbnormal: true, status: 'high', statusLabel: '高风险' },
+      { date: '01/15', time: '01/15', value: 4.8, displayValue: '4.8', isAbnormal: true, status: 'medium', statusLabel: '中风险' },
+      { date: '01/22', time: '01/22', value: 6.8, displayValue: '6.8', isAbnormal: false, status: 'normal', statusLabel: '正常' },
+      { date: '01/29', time: '01/29', value: 14.2, displayValue: '14.2', isAbnormal: true, status: 'high', statusLabel: '高风险' },
+      { date: '02/03', time: '02/03', value: 3.8, displayValue: '3.8', isAbnormal: true, status: 'critical', statusLabel: '极高风险' },
+      { date: '今日', time: '今日', value: 5.8, displayValue: '5.8', isAbnormal: false, status: 'normal', statusLabel: '正常' },
     ],
   },
   hr: {
@@ -2375,7 +2453,7 @@ const activityCards = computed(() => {
   const standingFilled = 10
   const standingTotal = 12
 
-  const stepsChart = computeMiniChart(stepsData, '#3B82F6')
+  const stepsChart = computeMiniChart(stepsData, '#396CFF')
   const sleepChart = computeMiniChart(sleepData, '#10B981')
   const metChart = computeMiniChart(metData, '#F59E0B')
 
@@ -2726,6 +2804,7 @@ const chartDataPointsClinical = computed(() => {
   return data.map((item, idx) => {
     const x = padding + (idx * (chartWidth - 2 * padding)) / (data.length - 1)
     const y = chartHeight - padding - ((item.value - config.yAxisMin) / range) * (chartHeight - 2 * padding)
+    const riskColor = getPointRiskColor(currentMetric.value, item)
     return {
       x,
       y,
@@ -2734,16 +2813,106 @@ const chartDataPointsClinical = computed(() => {
       isAbnormal: item.isAbnormal,
       status: item.status,
       statusLabel: item.statusLabel,
+      riskColor,
     }
   })
 })
 
-// 临床折线路径
-const chartPointsClinical = computed(() => {
-  return chartDataPointsClinical.value.map(p => `${p.x},${p.y}`).join(' ')
+// 分段着色折线
+const chartSegmentsClinical = computed(() => {
+  const points = chartDataPointsClinical.value
+  if (points.length < 2) return []
+  const data = chartDataMock[currentMetric.value][currentTimePeriod.value]
+  return points.slice(1).map((point, idx) => {
+    const prevPoint = points[idx]
+    const color = getPointRiskColor(currentMetric.value, data[idx + 1])
+    return { x1: prevPoint.x, y1: prevPoint.y, x2: point.x, y2: point.y, color }
+  })
 })
 
-// 安全区域图表坐标
+// 舒张压数据点（仅血压模式）
+const chartDiastolicPoints = computed(() => {
+  if (currentMetric.value !== 'bp') return []
+  const data = chartDataMock[currentMetric.value][currentTimePeriod.value]
+  const config = metricAnalysisConfig[currentMetric.value]
+  const range = config.yAxisMax - config.yAxisMin
+  const chartWidth = 280
+  const chartHeight = 100
+  const padding = 10
+
+  return data.map((item, idx) => {
+    const x = padding + (idx * (chartWidth - 2 * padding)) / (data.length - 1)
+    const diastolicVal = (item as any).diastolic || 80
+    const y = chartHeight - padding - ((diastolicVal - config.yAxisMin) / range) * (chartHeight - 2 * padding)
+    const riskColor = getBpRisk(item.value, diastolicVal).color
+    return { x, y, value: diastolicVal, riskColor }
+  })
+})
+
+// 舒张压折线段
+const chartDiastolicSegments = computed(() => {
+  const points = chartDiastolicPoints.value
+  if (points.length < 2) return []
+  return points.slice(1).map((point, idx) => ({
+    x1: points[idx].x, y1: points[idx].y,
+    x2: point.x, y2: point.y,
+    color: point.riskColor,
+  }))
+})
+
+// 风险区间背景带
+const riskZoneBands = computed(() => {
+  const config = metricAnalysisConfig[currentMetric.value]
+  const range = config.yAxisMax - config.yAxisMin
+  const chartHeight = 100, padding = 10, drawH = chartHeight - 2 * padding
+  const toY = (val: number) => chartHeight - padding - ((Math.max(config.yAxisMin, Math.min(config.yAxisMax, val)) - config.yAxisMin) / range) * drawH
+
+  if (currentMetric.value === 'bp') {
+    return [
+      { y: toY(200), height: toY(180) - toY(200), color: 'rgba(220, 38, 38, 0.06)' },
+      { y: toY(180), height: toY(160) - toY(180), color: 'rgba(245, 158, 11, 0.06)' },
+      { y: toY(160), height: toY(90) - toY(160), color: 'rgba(16, 185, 129, 0.06)' },
+      { y: toY(90), height: toY(60) - toY(90), color: 'rgba(220, 38, 38, 0.06)' },
+    ]
+  }
+  if (currentMetric.value === 'glucose') {
+    return [
+      { y: toY(28), height: toY(25) - toY(28), color: 'rgba(220, 38, 38, 0.06)' },
+      { y: toY(25), height: toY(8) - toY(25), color: 'rgba(245, 158, 11, 0.06)' },
+      { y: toY(8), height: toY(5) - toY(8), color: 'rgba(16, 185, 129, 0.06)' },
+      { y: toY(5), height: toY(4) - toY(5), color: 'rgba(245, 158, 11, 0.06)' },
+      { y: toY(4), height: toY(2) - toY(4), color: 'rgba(220, 38, 38, 0.06)' },
+    ]
+  }
+  return [{ y: toY(config.safeMax), height: toY(config.safeMin) - toY(config.safeMax), color: 'rgba(16, 185, 129, 0.06)' }]
+})
+
+// 风险区间分界线
+const riskZoneBoundaryLines = computed(() => {
+  const config = metricAnalysisConfig[currentMetric.value]
+  const range = config.yAxisMax - config.yAxisMin
+  const chartHeight = 100, padding = 10, drawH = chartHeight - 2 * padding
+  const toY = (val: number) => chartHeight - padding - ((val - config.yAxisMin) / range) * drawH
+
+  if (currentMetric.value === 'bp') {
+    return [
+      { y: toY(180), color: 'rgba(220, 38, 38, 0.25)', label: '180' },
+      { y: toY(160), color: 'rgba(245, 158, 11, 0.25)', label: '160' },
+      { y: toY(90), color: 'rgba(245, 158, 11, 0.25)', label: '90' },
+    ]
+  }
+  if (currentMetric.value === 'glucose') {
+    return [
+      { y: toY(25), color: 'rgba(220, 38, 38, 0.25)', label: '25' },
+      { y: toY(8), color: 'rgba(245, 158, 11, 0.25)', label: '8' },
+      { y: toY(5), color: 'rgba(245, 158, 11, 0.25)', label: '5' },
+      { y: toY(4), color: 'rgba(220, 38, 38, 0.25)', label: '4' },
+    ]
+  }
+  return []
+})
+
+// 安全区域图表坐标（兼容其他指标）
 const safeZoneChartY = computed(() => {
   const config = metricAnalysisConfig[currentMetric.value]
   const range = config.yAxisMax - config.yAxisMin
@@ -2817,6 +2986,27 @@ const getVitalStatus = (type: string, value: number): { status: string; label: s
     default:
       return { status: 'normal', label: '正常' }
   }
+}
+
+// ========== 风险分级函数 ==========
+const getBpRisk = (systolic: number, diastolic: number) => {
+  if (systolic < 90 || diastolic < 60) return { label: '极高风险', color: '#FF4C61' }
+  if (systolic >= 180 || diastolic >= 120) return { label: '高风险', color: '#FF4C61' }
+  if (systolic >= 160 || diastolic >= 100) return { label: '中风险', color: '#F59E0B' }
+  return { label: '正常', color: '#10B981' }
+}
+
+const getGlucoseRisk = (value: number) => {
+  if (value >= 25 || value < 4) return { label: '极高风险', color: '#FF4C61' }
+  if (value >= 8) return { label: '高风险', color: '#F59E0B' }
+  if (value <= 5) return { label: '中风险', color: '#F59E0B' }
+  return { label: '正常', color: '#10B981' }
+}
+
+const getPointRiskColor = (metric: string, item: any): string => {
+  if (metric === 'bp') return getBpRisk(item.value, item.diastolic || 80).color
+  if (metric === 'glucose') return getGlucoseRisk(item.value).color
+  return '#3978C2'
 }
 
 // 咨询摘要（模拟数据）
@@ -3087,7 +3277,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  color: #323233;
+  color: #1A2238;
   font-size: 18px;
   cursor: pointer;
   transition: background 0.15s;
@@ -3097,7 +3287,7 @@ onMounted(() => {
 .nav-title {
   font-size: 16px;
   font-weight: 600;
-  color: #0F172A;
+  color: #1A2238;
 }
 
 .nav-placeholder { width: 32px; }
@@ -3131,7 +3321,7 @@ onMounted(() => {
 
 .avatar.border-urgent {
   border-color: #EF4444;
-  background: linear-gradient(135deg, #EF4444, #DC2626);
+  background: linear-gradient(135deg, #FF4C61, #E8364A);
 }
 .avatar.border-attention {
   border-color: #F59E0B;
@@ -3142,8 +3332,8 @@ onMounted(() => {
   background: linear-gradient(135deg, #10B981, #059669);
 }
 .avatar.border-offline {
-  border-color: #9CA3AF;
-  background: linear-gradient(135deg, #9CA3AF, #6B7280);
+  border-color: #8A9AC3;
+  background: linear-gradient(135deg, #8A9AC3, #6B7FA8);
 }
 
 .pulse-ring {
@@ -3173,7 +3363,7 @@ onMounted(() => {
 .name {
   font-size: 18px;
   font-weight: 700;
-  color: #0F172A;
+  color: #1A2238;
 }
 
 .status-tag {
@@ -3182,10 +3372,10 @@ onMounted(() => {
   border-radius: 6px;
   font-weight: 600;
 }
-.tag-urgent { background: rgba(239, 68, 68, 0.1); color: #DC2626; }
+.tag-urgent { background: rgba(255, 76, 97, 0.1); color: #FF4C61; }
 .tag-attention { background: rgba(245, 158, 11, 0.1); color: #D97706; }
 .tag-stable { background: rgba(16, 185, 129, 0.08); color: #059669; }
-.tag-offline { background: rgba(100, 116, 139, 0.08); color: #6B7280; }
+.tag-offline { background: rgba(100, 116, 139, 0.08); color: #8A9AC3; }
 
 .meta-row {
   display: flex;
@@ -3197,14 +3387,14 @@ onMounted(() => {
   align-items: center;
   gap: 4px;
   font-size: 13px;
-  color: #64748B;
+  color: #8A9AC3;
 }
 
 .call-btn {
   width: 44px;
   height: 44px;
   border-radius: 14px;
-  background: linear-gradient(135deg, #3B82F6, #2563EB);
+  background: linear-gradient(135deg, #396CFF, #6B8FFF);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3212,12 +3402,12 @@ onMounted(() => {
   font-size: 20px;
   text-decoration: none;
   flex-shrink: 0;
-  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35);
+  box-shadow: 0 4px 14px rgba(74, 144, 217, 0.35);
   transition: transform 0.15s, box-shadow 0.15s;
 }
 .call-btn:active {
   transform: scale(0.92);
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
+  box-shadow: 0 2px 8px rgba(74, 144, 217, 0.25);
 }
 
 /* 骨架屏 */
@@ -3281,7 +3471,7 @@ onMounted(() => {
   gap: 5px;
   padding: 10px 0;
   font-size: 13px;
-  color: #64748B;
+  color: #8A9AC3;
   border-radius: 10px;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -3298,13 +3488,13 @@ onMounted(() => {
 
 .tab-item.active {
   background: #FFF;
-  color: #3B82F6;
+  color: #396CFF;
   font-weight: 600;
-  box-shadow: 0 2px 10px rgba(59, 130, 246, 0.12);
+  box-shadow: 0 2px 10px rgba(74, 144, 217, 0.12);
 }
 
 .tab-item.active .tab-icon {
-  color: #3B82F6;
+  color: #396CFF;
 }
 
 /* ===== 内容区域 ===== */
@@ -3338,7 +3528,7 @@ onMounted(() => {
   gap: 8px;
   font-size: 15px;
   font-weight: 600;
-  color: #0F172A;
+  color: #1A2238;
   margin-bottom: 14px;
 }
 
@@ -3350,7 +3540,7 @@ onMounted(() => {
 .section-main-title {
   font-size: 16px;
   font-weight: 700;
-  color: #0F172A;
+  color: #1A2238;
   margin: 0 0 14px 0;
 }
 
@@ -3371,7 +3561,7 @@ onMounted(() => {
   width: 26px;
   height: 26px;
   border-radius: 7px;
-  background: linear-gradient(135deg, #3B82F6, #2563EB);
+  background: linear-gradient(135deg, #396CFF, #6B8FFF);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3382,7 +3572,7 @@ onMounted(() => {
 .score-title-text {
   font-size: 16px;
   font-weight: 700;
-  color: #0F172A;
+  color: #1A2238;
   margin: 0;
   flex: 1;
 }
@@ -3398,8 +3588,8 @@ onMounted(() => {
   color: #059669;
 }
 .score-trend.down {
-  background: rgba(239, 68, 68, 0.12);
-  color: #DC2626;
+  background: rgba(255, 76, 97, 0.12);
+  color: #FF4C61;
 }
 
 .score-body-v3 {
@@ -3457,8 +3647,8 @@ onMounted(() => {
   border-radius: 8px;
 }
 .risk-title-v3.danger {
-  background: rgba(239, 68, 68, 0.1);
-  color: #DC2626;
+  background: rgba(255, 76, 97, 0.1);
+  color: #FF4C61;
 }
 .risk-title-v3.warning {
   background: rgba(245, 158, 11, 0.1);
@@ -3491,7 +3681,7 @@ onMounted(() => {
 
 .dim-label-v3 {
   font-size: 13px;
-  color: #64748B;
+  color: #8A9AC3;
   width: 56px;
   flex-shrink: 0;
 }
@@ -3518,14 +3708,14 @@ onMounted(() => {
   align-items: flex-start;
   gap: 8px;
   padding: 10px 12px;
-  background: rgba(59, 130, 246, 0.08);
+  background: rgba(74, 144, 217, 0.08);
   border-radius: 8px;
-  border-left: 3px solid #3B82F6;
+  border-left: 3px solid #396CFF;
 }
 
 .advice-icon-v3 {
   font-size: 15px;
-  color: #3B82F6;
+  color: #396CFF;
   flex-shrink: 0;
   margin-top: 1px;
 }
@@ -3547,7 +3737,7 @@ onMounted(() => {
   gap: 8px;
   font-size: 15px;
   font-weight: 600;
-  color: #0F172A;
+  color: #1A2238;
   margin-bottom: 10px;
 }
 
@@ -3582,18 +3772,18 @@ onMounted(() => {
   justify-content: center;
   flex-shrink: 0;
 }
-.vital-icon-v3.bp { background: rgba(239, 68, 68, 0.12); }
+.vital-icon-v3.bp { background: rgba(255, 76, 97, 0.12); }
 .vital-icon-v3.bp::before { content: '💓'; font-size: 10px; }
 .vital-icon-v3.glucose { background: rgba(245, 158, 11, 0.12); }
 .vital-icon-v3.glucose::before { content: '🩸'; font-size: 10px; }
 .vital-icon-v3.hr { background: rgba(139, 92, 246, 0.12); }
 .vital-icon-v3.hr::before { content: '💜'; font-size: 10px; }
-.vital-icon-v3.bmi { background: rgba(59, 130, 246, 0.12); }
+.vital-icon-v3.bmi { background: rgba(74, 144, 217, 0.12); }
 .vital-icon-v3.bmi::before { content: '⚖️'; font-size: 10px; }
 
 .vital-name-v3 {
   font-size: 13px;
-  color: #64748B;
+  color: #8A9AC3;
   flex: 1;
 }
 
@@ -3604,8 +3794,8 @@ onMounted(() => {
   font-weight: 600;
 }
 .vital-tag-v3.normal { background: rgba(16, 185, 129, 0.12); color: #059669; }
-.vital-tag-v3.high { background: rgba(239, 68, 68, 0.12); color: #DC2626; }
-.vital-tag-v3.low { background: rgba(59, 130, 246, 0.12); color: #2563EB; }
+.vital-tag-v3.high { background: rgba(255, 76, 97, 0.12); color: #FF4C61; }
+.vital-tag-v3.low { background: rgba(74, 144, 217, 0.12); color: #3978C2; }
 .vital-tag-v3.warning { background: rgba(245, 158, 11, 0.12); color: #D97706; }
 
 .vital-data-v3 {
@@ -3618,13 +3808,13 @@ onMounted(() => {
 .vital-value-v3 {
   font-size: 20px;
   font-weight: 700;
-  color: #0F172A;
+  color: #1A2238;
   font-family: 'SF Mono', Monaco, monospace;
 }
 
 .vital-unit-v3 {
   font-size: 11px;
-  color: #64748B;
+  color: #8A9AC3;
 }
 
 .bmi-sub-v3 {
@@ -3632,7 +3822,7 @@ onMounted(() => {
   align-items: center;
   gap: 4px;
   font-size: 12px;
-  color: #64748B;
+  color: #8A9AC3;
   padding-left: 24px;
   font-family: 'SF Mono', Monaco, monospace;
 }
@@ -3678,18 +3868,18 @@ onMounted(() => {
   justify-content: center;
   flex-shrink: 0;
 }
-.vital-icon-v4.bp { background: rgba(239, 68, 68, 0.12); }
+.vital-icon-v4.bp { background: rgba(255, 76, 97, 0.12); }
 .vital-icon-v4.bp::before { content: '💓'; font-size: 9px; }
 .vital-icon-v4.glucose { background: rgba(245, 158, 11, 0.12); }
 .vital-icon-v4.glucose::before { content: '🩸'; font-size: 9px; }
 .vital-icon-v4.hr { background: rgba(139, 92, 246, 0.12); }
 .vital-icon-v4.hr::before { content: '💜'; font-size: 9px; }
-.vital-icon-v4.bmi { background: rgba(59, 130, 246, 0.12); }
+.vital-icon-v4.bmi { background: rgba(74, 144, 217, 0.12); }
 .vital-icon-v4.bmi::before { content: '⚖️'; font-size: 9px; }
 
 .vital-name-v4 {
   font-size: 12px;
-  color: #64748B;
+  color: #8A9AC3;
 }
 
 .vital-bottom-v4 {
@@ -3702,7 +3892,7 @@ onMounted(() => {
 .vital-value-v4 {
   font-size: 15px;
   font-weight: 700;
-  color: #0F172A;
+  color: #1A2238;
   font-family: 'SF Mono', Monaco, monospace;
 }
 
@@ -3713,8 +3903,8 @@ onMounted(() => {
   font-weight: 600;
 }
 .vital-tag-v4.normal { background: rgba(16, 185, 129, 0.12); color: #059669; }
-.vital-tag-v4.high { background: rgba(239, 68, 68, 0.12); color: #DC2626; }
-.vital-tag-v4.low { background: rgba(59, 130, 246, 0.12); color: #2563EB; }
+.vital-tag-v4.high { background: rgba(255, 76, 97, 0.12); color: #FF4C61; }
+.vital-tag-v4.low { background: rgba(74, 144, 217, 0.12); color: #3978C2; }
 .vital-tag-v4.warning { background: rgba(245, 158, 11, 0.12); color: #D97706; }
 
 /* BMI 独立行 */
@@ -3743,13 +3933,13 @@ onMounted(() => {
 .bmi-value-v4 {
   font-size: 18px;
   font-weight: 700;
-  color: #0F172A;
+  color: #1A2238;
   font-family: 'SF Mono', Monaco, monospace;
 }
 
 .bmi-detail-v4 {
   font-size: 12px;
-  color: #64748B;
+  color: #8A9AC3;
   font-family: 'SF Mono', Monaco, monospace;
 }
 
@@ -3794,7 +3984,7 @@ onMounted(() => {
 
 .vital-name-v5 {
   font-size: 12px;
-  color: #64748B;
+  color: #8A9AC3;
 }
 
 .vital-tag-v5 {
@@ -3804,14 +3994,14 @@ onMounted(() => {
   font-weight: 600;
 }
 .vital-tag-v5.normal { background: rgba(16, 185, 129, 0.12); color: #059669; }
-.vital-tag-v5.high { background: rgba(239, 68, 68, 0.12); color: #DC2626; }
-.vital-tag-v5.low { background: rgba(59, 130, 246, 0.12); color: #2563EB; }
+.vital-tag-v5.high { background: rgba(255, 76, 97, 0.12); color: #FF4C61; }
+.vital-tag-v5.low { background: rgba(74, 144, 217, 0.12); color: #3978C2; }
 .vital-tag-v5.warning { background: rgba(245, 158, 11, 0.12); color: #D97706; }
 
 .vital-value-v5 {
   font-size: 18px;
   font-weight: 700;
-  color: #0F172A;
+  color: #1A2238;
   font-family: 'SF Mono', Monaco, monospace;
   line-height: 1.2;
 }
@@ -3848,7 +4038,7 @@ onMounted(() => {
 .bmi-value-v5 {
   font-size: 20px;
   font-weight: 700;
-  color: #0F172A;
+  color: #1A2238;
   font-family: 'SF Mono', Monaco, monospace;
 }
 
@@ -3860,7 +4050,7 @@ onMounted(() => {
 
 .bmi-detail-v5 {
   font-size: 13px;
-  color: #64748B;
+  color: #8A9AC3;
   font-family: 'SF Mono', Monaco, monospace;
 }
 
@@ -3888,12 +4078,12 @@ onMounted(() => {
   justify-content: center;
   font-size: 14px;
 }
-.icon-blue { background: #EFF6FF; color: #3B82F6; }
+.icon-blue { background: rgba(57, 108, 255, 0.08); color: #396CFF; }
 .icon-green { background: #ECFDF5; color: #10B981; }
 .icon-orange { background: #FFF7ED; color: #F59E0B; }
 .icon-red { background: #FEF2F2; color: #EF4444; }
 .icon-purple { background: #F5F3FF; color: #8B5CF6; }
-.icon-gray { background: #F8FAFC; color: #64748B; }
+.icon-gray { background: rgba(138, 154, 195, 0.08); color: #8A9AC3; }
 
 /* 旧版健康评分样式已移除，使用 V2 版本 */
 
@@ -3915,14 +4105,14 @@ onMounted(() => {
 
 .consult-label {
   font-size: 13px;
-  color: #64748B;
+  color: #8A9AC3;
   padding-top: 2px;
   flex-shrink: 0;
 }
 
 .consult-value {
   font-size: 14px;
-  color: #0F172A;
+  color: #1A2238;
   line-height: 1.6;
 }
 
@@ -3934,7 +4124,7 @@ onMounted(() => {
   margin: 0;
   padding-left: 18px;
   font-size: 14px;
-  color: #0F172A;
+  color: #1A2238;
   line-height: 1.8;
 }
 
@@ -3955,7 +4145,7 @@ onMounted(() => {
   padding-top: 12px;
   border-top: 1px solid #F1F5F9;
   font-size: 13px;
-  color: #3B82F6;
+  color: #396CFF;
   cursor: pointer;
 }
 
@@ -3965,7 +4155,7 @@ onMounted(() => {
   align-items: center;
   gap: 4px;
   font-size: 12px;
-  color: #3B82F6;
+  color: #396CFF;
   padding: 4px 10px;
   background: #EFF6FF;
   border-radius: 6px;
@@ -3998,17 +4188,17 @@ onMounted(() => {
 
 .history-label {
   font-size: 12px;
-  color: #64748B;
+  color: #8A9AC3;
 }
 
 .history-value {
   font-size: 14px;
-  color: #0F172A;
+  color: #1A2238;
   line-height: 1.5;
 }
 
 .history-value.text-danger {
-  color: #DC2626;
+  color: #FF4C61;
   font-weight: 600;
 }
 
@@ -4045,22 +4235,22 @@ onMounted(() => {
   justify-content: center;
   font-size: 18px;
 }
-.archive-icon.blue { background: #EFF6FF; color: #3B82F6; }
+.archive-icon.blue { background: rgba(57, 108, 255, 0.08); color: #396CFF; }
 .archive-icon.red { background: #FEF2F2; color: #EF4444; }
 .archive-icon.green { background: #ECFDF5; color: #10B981; }
 .archive-icon.orange { background: #FFF7ED; color: #F59E0B; }
 .archive-icon.purple { background: #F5F3FF; color: #8B5CF6; }
-.archive-icon.gray { background: #F8FAFC; color: #64748B; }
+.archive-icon.gray { background: rgba(138, 154, 195, 0.08); color: #8A9AC3; }
 
 .archive-label {
   font-size: 13px;
-  color: #0F172A;
+  color: #1A2238;
   font-weight: 500;
 }
 
 .archive-count {
   font-size: 11px;
-  color: #64748B;
+  color: #8A9AC3;
 }
 
 /* ===== 历史咨询弹窗 ===== */
@@ -4075,14 +4265,14 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 16px;
-  border-bottom: 1px solid #F1F5F9;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.04);
   flex-shrink: 0;
 }
 
 .popup-title {
   font-size: 16px;
   font-weight: 600;
-  color: #0F172A;
+  color: #1A2238;
 }
 
 .popup-close {
@@ -4123,7 +4313,7 @@ onMounted(() => {
 .consult-date {
   font-size: 14px;
   font-weight: 600;
-  color: #0F172A;
+  color: #1A2238;
   font-family: 'SF Mono', Monaco, monospace;
 }
 
@@ -4135,7 +4325,7 @@ onMounted(() => {
 }
 .consult-type-badge.blue {
   background: #EFF6FF;
-  color: #3B82F6;
+  color: #396CFF;
 }
 .consult-type-badge.green {
   background: #ECFDF5;
@@ -4168,14 +4358,14 @@ onMounted(() => {
 
 .summary-label {
   font-size: 13px;
-  color: #64748B;
+  color: #8A9AC3;
   flex-shrink: 0;
   width: 36px;
 }
 
 .summary-value {
   font-size: 14px;
-  color: #0F172A;
+  color: #1A2238;
   line-height: 1.5;
   flex: 1;
   display: -webkit-box;
@@ -4194,7 +4384,7 @@ onMounted(() => {
 
 .consult-doctor {
   font-size: 13px;
-  color: #64748B;
+  color: #8A9AC3;
 }
 
 .arrow-icon {
@@ -4225,7 +4415,7 @@ onMounted(() => {
 .detail-date {
   font-size: 16px;
   font-weight: 600;
-  color: #0F172A;
+  color: #1A2238;
 }
 
 .detail-section {
@@ -4235,13 +4425,13 @@ onMounted(() => {
 .detail-section h4 {
   font-size: 13px;
   font-weight: 600;
-  color: #64748B;
+  color: #8A9AC3;
   margin: 0 0 8px 0;
 }
 
 .detail-section p {
   font-size: 14px;
-  color: #0F172A;
+  color: #1A2238;
   line-height: 1.6;
   margin: 0;
 }
@@ -4250,7 +4440,7 @@ onMounted(() => {
   margin: 0;
   padding-left: 18px;
   font-size: 14px;
-  color: #0F172A;
+  color: #1A2238;
   line-height: 1.8;
 }
 
@@ -4304,7 +4494,7 @@ onMounted(() => {
   border: 3px solid #FFF;
   box-shadow: 0 0 0 2px currentColor;
 }
-.timeline-node-dot.blue { color: #3B82F6; background: #3B82F6; }
+.timeline-node-dot.blue { color: #396CFF; background: #396CFF; }
 .timeline-node-dot.green { color: #10B981; background: #10B981; }
 .timeline-node-dot.red { color: #EF4444; background: #EF4444; }
 .timeline-node-dot.orange { color: #F59E0B; background: #F59E0B; }
@@ -4328,7 +4518,7 @@ onMounted(() => {
 .timeline-card-title {
   font-size: 14px;
   font-weight: 600;
-  color: #0F172A;
+  color: #1A2238;
 }
 
 .timeline-type-badge {
@@ -4337,7 +4527,7 @@ onMounted(() => {
   border-radius: 4px;
   font-weight: 600;
 }
-.timeline-type-badge.blue { background: #EFF6FF; color: #3B82F6; }
+.timeline-type-badge.blue { background: rgba(57, 108, 255, 0.08); color: #396CFF; }
 .timeline-type-badge.green { background: #ECFDF5; color: #10B981; }
 .timeline-type-badge.red { background: #FEF2F2; color: #EF4444; }
 .timeline-type-badge.orange { background: #FFF7ED; color: #F59E0B; }
@@ -4345,7 +4535,7 @@ onMounted(() => {
 
 .timeline-card-summary {
   font-size: 14px;
-  color: #64748B;
+  color: #8A9AC3;
   line-height: 1.5;
   margin: 0 0 10px 0;
 }
@@ -4360,13 +4550,13 @@ onMounted(() => {
 
 .timeline-card-date {
   font-size: 13px;
-  color: #64748B;
+  color: #8A9AC3;
   font-family: 'SF Mono', Monaco, monospace;
 }
 
 .timeline-card-dept {
   font-size: 12px;
-  color: #64748B;
+  color: #8A9AC3;
 }
 
 /* ===== 资料时间轴弹窗 ===== */
@@ -4403,7 +4593,7 @@ onMounted(() => {
   width: 80px;
   flex-shrink: 0;
   font-size: 13px;
-  color: #64748B;
+  color: #8A9AC3;
   font-family: 'SF Mono', Monaco, monospace;
 }
 
@@ -4411,7 +4601,7 @@ onMounted(() => {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #3B82F6;
+  background: #396CFF;
   flex-shrink: 0;
   margin-top: 4px;
 }
@@ -4426,12 +4616,12 @@ onMounted(() => {
 .record-type {
   font-size: 14px;
   font-weight: 600;
-  color: #0F172A;
+  color: #1A2238;
 }
 
 .record-dept {
   font-size: 13px;
-  color: #64748B;
+  color: #8A9AC3;
 }
 
 /* ===== 监测概况（指标数据Tab） ===== */
@@ -4455,20 +4645,20 @@ onMounted(() => {
 .metric-value {
   font-size: 16px;
   font-weight: 700;
-  color: #0F172A;
+  color: #1A2238;
   font-family: 'SF Mono', Monaco, monospace;
 }
 .metric-value small {
   font-size: 11px;
   font-weight: 500;
-  color: #64748B;
+  color: #8A9AC3;
 }
 .metric-value.accent-green { color: #059669; }
-.metric-value.accent-red { color: #DC2626; }
+.metric-value.accent-red { color: #FF4C61; }
 
 .metric-label {
   font-size: 12px;
-  color: #64748B;
+  color: #8A9AC3;
 }
 
 .current-status-row {
@@ -4482,7 +4672,7 @@ onMounted(() => {
 
 .cs-label {
   font-size: 13px;
-  color: #64748B;
+  color: #8A9AC3;
 }
 
 .cs-value {
@@ -4491,10 +4681,10 @@ onMounted(() => {
   padding: 3px 10px;
   border-radius: 6px;
 }
-.cs-urgent { background: rgba(239, 68, 68, 0.1); color: #DC2626; }
+.cs-urgent { background: rgba(255, 76, 97, 0.1); color: #FF4C61; }
 .cs-attention { background: rgba(245, 158, 11, 0.1); color: #D97706; }
 .cs-stable { background: rgba(16, 185, 129, 0.08); color: #059669; }
-.cs-offline { background: rgba(100, 116, 139, 0.08); color: #64748B; }
+.cs-offline { background: rgba(100, 116, 139, 0.08); color: #8A9AC3; }
 
 /* ===== 指标数据 - 预警时间线 ===== */
 .alert-timeline {
@@ -4564,17 +4754,17 @@ onMounted(() => {
   font-weight: 700;
   font-family: 'SF Mono', Monaco, monospace;
 }
-.alert-val.danger { color: #DC2626; }
+.alert-val.danger { color: #FF4C61; }
 .alert-val.warning { color: #D97706; }
 
 .alert-type-small {
   font-size: 12px;
-  color: #64748B;
+  color: #8A9AC3;
 }
 
 .alert-time-label {
   font-size: 13px;
-  color: #64748B;
+  color: #8A9AC3;
   font-family: 'SF Mono', Monaco, monospace;
 }
 
@@ -4642,12 +4832,12 @@ onMounted(() => {
   font-weight: 800;
   font-family: 'SF Mono', Monaco, monospace;
 }
-.big-value.danger { color: #DC2626; }
+.big-value.danger { color: #FF4C61; }
 .big-value.warning { color: #D97706; }
 
 .big-unit {
   font-size: 13px;
-  color: #64748B;
+  color: #8A9AC3;
   font-weight: 500;
 }
 
@@ -4665,7 +4855,7 @@ onMounted(() => {
   font-weight: 600;
 }
 .badge-glucose { background: rgba(245, 158, 11, 0.12); color: #92400E; }
-.badge-bp { background: rgba(239, 68, 68, 0.1); color: #991B1B; }
+.badge-bp { background: rgba(255, 76, 97, 0.1); color: #991B1B; }
 .badge-hr { background: rgba(139, 92, 246, 0.1); color: #5B21B6; }
 
 .lac-time {
@@ -4711,7 +4901,7 @@ onMounted(() => {
 .mp-title {
   font-size: 15px;
   font-weight: 600;
-  color: #0F172A;
+  color: #1A2238;
   margin: 0;
 }
 
@@ -4719,7 +4909,7 @@ onMounted(() => {
   font-size: 10px;
   padding: 2px 6px;
   background: #F1F5F9;
-  color: #64748B;
+  color: #8A9AC3;
   border-radius: 3px;
   font-weight: 500;
 }
@@ -4730,7 +4920,7 @@ onMounted(() => {
   gap: 4px;
   padding: 6px 10px;
   background: #EFF6FF;
-  color: #3B82F6;
+  color: #396CFF;
   border: none;
   border-radius: 6px;
   font-size: 11px;
@@ -4786,7 +4976,7 @@ onMounted(() => {
 
 .stage-text {
   font-size: 12px;
-  color: #64748B;
+  color: #8A9AC3;
 }
 
 .stage-text strong {
@@ -4811,7 +5001,7 @@ onMounted(() => {
   gap: 4px;
 }
 
-.dash-label { font-size: 11px; color: #64748B; }
+.dash-label { font-size: 11px; color: #8A9AC3; }
 
 .dash-value-row {
   display: flex;
@@ -4829,14 +5019,14 @@ onMounted(() => {
 
 .dash-progress-fill {
   height: 100%;
-  background: #3B82F6;
+  background: #396CFF;
   border-radius: 2px;
 }
 
 .dash-value {
   font-size: 14px;
   font-weight: 600;
-  color: #0F172A;
+  color: #1A2238;
 }
 
 .dash-value.good { color: #10B981; }
@@ -4868,7 +5058,7 @@ onMounted(() => {
 .tracking-title {
   font-size: 14px;
   font-weight: 600;
-  color: #0F172A;
+  color: #1A2238;
 }
 
 .tracking-tabs {
@@ -4882,7 +5072,7 @@ onMounted(() => {
   padding: 5px 14px;
   border: none;
   background: transparent;
-  color: #64748B;
+  color: #8A9AC3;
   font-size: 12px;
   font-weight: 500;
   border-radius: 4px;
@@ -4891,7 +5081,7 @@ onMounted(() => {
 
 .tracking-tab.active {
   background: #FFFFFF;
-  color: #0F172A;
+  color: #1A2238;
   box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
@@ -4904,18 +5094,18 @@ onMounted(() => {
   align-items: center;
   margin-bottom: 12px;
   padding-bottom: 10px;
-  border-bottom: 1px solid #F1F5F9;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.04);
 }
 
 .day-date {
   font-size: 13px;
   font-weight: 600;
-  color: #0F172A;
+  color: #1A2238;
 }
 
 .day-summary {
   font-size: 12px;
-  color: #64748B;
+  color: #8A9AC3;
 }
 
 .checkin-timeline {
@@ -4997,7 +5187,7 @@ onMounted(() => {
   align-items: center;
   gap: 4px;
   font-size: 11px;
-  color: #64748B;
+  color: #8A9AC3;
 }
 
 .legend-dot {
@@ -5006,7 +5196,7 @@ onMounted(() => {
   border-radius: 2px;
 }
 
-.legend-dot.medication { background: #3B82F6; }
+.legend-dot.medication { background: #396CFF; }
 .legend-dot.diet { background: #F59E0B; }
 .legend-dot.exercise { background: #10B981; }
 
@@ -5056,7 +5246,7 @@ onMounted(() => {
   min-height: 2px;
 }
 
-.bar.medication { background: #3B82F6; }
+.bar.medication { background: #396CFF; }
 .bar.diet { background: #F59E0B; }
 .bar.exercise { background: #10B981; }
 
@@ -5118,7 +5308,7 @@ onMounted(() => {
 
 .cal-day.today {
   background: #EFF6FF;
-  border: 1px solid #3B82F6;
+  border: 1px solid #396CFF;
 }
 
 .cal-day.future {
@@ -5167,7 +5357,7 @@ onMounted(() => {
 
 .stat-label {
   font-size: 11px;
-  color: #64748B;
+  color: #8A9AC3;
 }
 
 /* 统计收纳入口 */
@@ -5177,12 +5367,12 @@ onMounted(() => {
   align-items: center;
   gap: 4px;
   padding: 12px;
-  color: #64748B;
+  color: #8A9AC3;
   font-size: 13px;
   cursor: pointer;
 }
 
-.stats-shortcut:active { color: #3B82F6; }
+.stats-shortcut:active { color: #396CFF; }
 
 /* AI 决策卡片 */
 .ai-decision-card-v2 {
@@ -5281,7 +5471,7 @@ onMounted(() => {
   border: 1px solid #E2E8F0;
 }
 
-.metric-label { font-size: 10px; color: #64748B; }
+.metric-label { font-size: 10px; color: #8A9AC3; }
 .metric-value { font-size: 13px; font-weight: 600; }
 .metric-value.good { color: #10B981; }
 .metric-value.warning { color: #F59E0B; }
@@ -5349,7 +5539,7 @@ onMounted(() => {
 .csh-title {
   font-size: 14px;
   font-weight: 600;
-  color: #0F172A;
+  color: #1A2238;
   margin: 0;
 }
 
@@ -5359,7 +5549,7 @@ onMounted(() => {
   gap: 4px;
   padding: 5px 10px;
   background: #F8FAFC;
-  color: #64748B;
+  color: #8A9AC3;
   border: 1px solid #E2E8F0;
   border-radius: 6px;
   font-size: 11px;
@@ -5386,7 +5576,7 @@ onMounted(() => {
 
 .med-left-border {
   width: 3px;
-  background: #3B82F6;
+  background: #396CFF;
   flex-shrink: 0;
 }
 
@@ -5411,7 +5601,7 @@ onMounted(() => {
 .med-name {
   font-size: 14px;
   font-weight: 600;
-  color: #0F172A;
+  color: #1A2238;
 }
 
 .med-status {
@@ -5429,7 +5619,7 @@ onMounted(() => {
   align-items: center;
   gap: 4px;
   font-size: 12px;
-  color: #64748B;
+  color: #8A9AC3;
 }
 
 .med-dot { color: #CBD5E1; }
@@ -5483,7 +5673,7 @@ onMounted(() => {
 .bc-title {
   font-size: 13px;
   font-weight: 600;
-  color: #0F172A;
+  color: #1A2238;
 }
 
 .bc-targets {
@@ -5528,7 +5718,7 @@ onMounted(() => {
 .goal-cat-title {
   font-size: 14px;
   font-weight: 600;
-  color: #0F172A;
+  color: #1A2238;
 }
 
 .goal-items {
@@ -5553,7 +5743,7 @@ onMounted(() => {
 
 .goal-target {
   font-size: 12px;
-  color: #64748B;
+  color: #8A9AC3;
   margin-right: 12px;
 }
 
@@ -5597,12 +5787,12 @@ onMounted(() => {
 .se-title {
   font-size: 16px;
   font-weight: 600;
-  color: #0F172A;
+  color: #1A2238;
 }
 
 .se-subtitle {
   font-size: 12px;
-  color: #64748B;
+  color: #8A9AC3;
   padding: 2px 8px;
   background: #EFF6FF;
   border-radius: 4px;
@@ -5640,12 +5830,12 @@ onMounted(() => {
   gap: 12px;
   padding: 8px;
   font-size: 12px;
-  color: #64748B;
+  color: #8A9AC3;
 }
 
 .compare-old { color: #94A3B8; }
 .compare-arrow { color: #CBD5E1; }
-.compare-new { color: #3B82F6; font-weight: 500; }
+.compare-new { color: #396CFF; font-weight: 500; }
 
 .se-form-list {
   display: flex;
@@ -5661,7 +5851,7 @@ onMounted(() => {
 }
 
 .se-form-item.modified {
-  border-color: #3B82F6;
+  border-color: #396CFF;
   background: #FAFBFF;
 }
 
@@ -5682,7 +5872,7 @@ onMounted(() => {
   flex: 1;
   font-size: 14px;
   font-weight: 600;
-  color: #0F172A;
+  color: #1A2238;
 }
 
 .form-delete-btn, .form-restore-btn {
@@ -5703,7 +5893,7 @@ onMounted(() => {
 
 .form-restore-btn {
   background: #DBEAFE;
-  color: #3B82F6;
+  color: #396CFF;
 }
 
 .form-item-body { }
@@ -5730,7 +5920,7 @@ onMounted(() => {
 
 .old-value {
   font-size: 13px;
-  color: #64748B;
+  color: #8A9AC3;
   padding: 8px;
   background: #F8FAFC;
   border-radius: 6px;
@@ -5743,7 +5933,7 @@ onMounted(() => {
 
 .new-input {
   font-size: 13px;
-  color: #0F172A;
+  color: #1A2238;
   padding: 8px;
   border: 1px solid #E2E8F0;
   border-radius: 6px;
@@ -5751,7 +5941,7 @@ onMounted(() => {
 }
 
 .new-input.changed {
-  border-color: #3B82F6;
+  border-color: #396CFF;
   background: #EFF6FF;
 }
 
@@ -5789,14 +5979,14 @@ onMounted(() => {
   background: #FFFFFF;
   border: 2px dashed #E2E8F0;
   border-radius: 10px;
-  color: #64748B;
+  color: #8A9AC3;
   font-size: 13px;
   cursor: pointer;
 }
 
 .se-add-btn:active {
-  border-color: #3B82F6;
-  color: #3B82F6;
+  border-color: #396CFF;
+  color: #396CFF;
 }
 
 .se-footer {
@@ -5821,7 +6011,7 @@ onMounted(() => {
   cursor: pointer;
 }
 
-.se-btn-cancel { background: #F1F5F9; color: #64748B; }
+.se-btn-cancel { background: #F1F5F9; color: #8A9AC3; }
 .se-btn-confirm { background: #4F46E5; color: #FFFFFF; }
 .se-btn:active { opacity: 0.9; }
 
@@ -5845,7 +6035,7 @@ onMounted(() => {
 .add-label {
   display: block;
   font-size: 12px;
-  color: #64748B;
+  color: #8A9AC3;
   margin-bottom: 8px;
 }
 
@@ -5864,7 +6054,7 @@ onMounted(() => {
 }
 
 .type-option.active {
-  border-color: #3B82F6;
+  border-color: #396CFF;
   background: #EFF6FF;
 }
 
@@ -5878,7 +6068,7 @@ onMounted(() => {
 
 .add-input:focus {
   outline: none;
-  border-color: #3B82F6;
+  border-color: #396CFF;
 }
 
 .add-confirm-btn {
@@ -5990,7 +6180,7 @@ onMounted(() => {
 .csh-title {
   font-size: 14px;
   font-weight: 600;
-  color: #0F172A;
+  color: #1A2238;
   margin: 0;
 }
 
@@ -6000,7 +6190,7 @@ onMounted(() => {
   gap: 4px;
   padding: 5px 10px;
   background: #F8FAFC;
-  color: #64748B;
+  color: #8A9AC3;
   border: 1px solid #E2E8F0;
   border-radius: 6px;
   font-size: 11px;
@@ -6027,7 +6217,7 @@ onMounted(() => {
 
 .med-left-border {
   width: 3px;
-  background: #3B82F6;
+  background: #396CFF;
   flex-shrink: 0;
 }
 
@@ -6052,7 +6242,7 @@ onMounted(() => {
 .med-name {
   font-size: 14px;
   font-weight: 600;
-  color: #0F172A;
+  color: #1A2238;
 }
 
 .med-status {
@@ -6070,7 +6260,7 @@ onMounted(() => {
   align-items: center;
   gap: 4px;
   font-size: 12px;
-  color: #64748B;
+  color: #8A9AC3;
 }
 
 .med-dot { color: #CBD5E1; }
@@ -6124,7 +6314,7 @@ onMounted(() => {
 .bc-title {
   font-size: 13px;
   font-weight: 600;
-  color: #0F172A;
+  color: #1A2238;
 }
 
 .bc-targets {
@@ -6170,7 +6360,7 @@ onMounted(() => {
   align-items: center;
   gap: 6px;
   font-size: 11px;
-  color: #64748B;
+  color: #8A9AC3;
   padding-top: 8px;
   border-top: 1px dashed #E2E8F0;
 }
@@ -6208,7 +6398,7 @@ onMounted(() => {
 .goal-cat-title {
   font-size: 14px;
   font-weight: 600;
-  color: #0F172A;
+  color: #1A2238;
 }
 
 .goal-items {
@@ -6233,7 +6423,7 @@ onMounted(() => {
 
 .goal-target {
   font-size: 12px;
-  color: #64748B;
+  color: #8A9AC3;
   margin-right: 12px;
 }
 
@@ -6284,12 +6474,12 @@ onMounted(() => {
 .sc-title {
   font-size: 16px;
   font-weight: 600;
-  color: #0F172A;
+  color: #1A2238;
 }
 
 .sc-subtitle {
   font-size: 12px;
-  color: #64748B;
+  color: #8A9AC3;
   padding: 2px 8px;
   background: #EFF6FF;
   border-radius: 4px;
@@ -6355,7 +6545,7 @@ onMounted(() => {
 
 .sc-column-tag.old {
   background: #F1F5F9;
-  color: #64748B;
+  color: #8A9AC3;
 }
 
 .sc-column-tag.new {
@@ -6396,13 +6586,13 @@ onMounted(() => {
 .sc-item-name {
   font-size: 12px;
   font-weight: 600;
-  color: #0F172A;
+  color: #1A2238;
 }
 
 .change-badge {
   font-size: 9px;
   padding: 1px 5px;
-  background: #3B82F6;
+  background: #396CFF;
   color: #FFFFFF;
   border-radius: 3px;
   margin-left: auto;
@@ -6426,7 +6616,7 @@ onMounted(() => {
 
 .sc-item-detail {
   font-size: 11px;
-  color: #64748B;
+  color: #8A9AC3;
 }
 
 .sc-item-detail.strikethrough {
@@ -6435,7 +6625,7 @@ onMounted(() => {
 }
 
 .sc-item-detail.detail-changed {
-  color: #3B82F6;
+  color: #396CFF;
 }
 
 .sc-item-reason {
@@ -6477,7 +6667,7 @@ onMounted(() => {
 
 .sc-btn-cancel {
   background: #F1F5F9;
-  color: #64748B;
+  color: #8A9AC3;
 }
 
 .sc-btn-confirm {
@@ -6542,7 +6732,7 @@ onMounted(() => {
 .history-title {
   font-size: 14px;
   font-weight: 600;
-  color: #0F172A;
+  color: #1A2238;
   margin-bottom: 12px;
   padding-left: 2px;
 }
@@ -6558,7 +6748,7 @@ onMounted(() => {
   align-items: center;
   gap: 12px;
   padding: 14px 0;
-  border-bottom: 1px solid #F1F5F9;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.04);
 }
 
 .vital-history-item:last-child {
@@ -6582,17 +6772,17 @@ onMounted(() => {
 .vh-value {
   font-size: 18px;
   font-weight: 700;
-  color: #0F172A;
+  color: #1A2238;
   font-family: 'SF Mono', Monaco, monospace;
 }
 
 .vh-value.abnormal {
-  color: #DC2626;
+  color: #FF4C61;
 }
 
 .vh-unit {
   font-size: 12px;
-  color: #64748B;
+  color: #8A9AC3;
 }
 
 .vh-tag {
@@ -6603,8 +6793,8 @@ onMounted(() => {
   flex-shrink: 0;
 }
 .vh-tag.normal { background: rgba(16, 185, 129, 0.12); color: #059669; }
-.vh-tag.high { background: rgba(239, 68, 68, 0.12); color: #DC2626; }
-.vh-tag.low { background: rgba(59, 130, 246, 0.12); color: #2563EB; }
+.vh-tag.high { background: rgba(255, 76, 97, 0.12); color: #FF4C61; }
+.vh-tag.low { background: rgba(74, 144, 217, 0.12); color: #3978C2; }
 .vh-tag.warning { background: rgba(245, 158, 11, 0.12); color: #D97706; }
 
 /* 可点击卡片样式 */
@@ -6652,7 +6842,7 @@ onMounted(() => {
   padding: 6px 14px;
   font-size: 13px;
   font-weight: 500;
-  color: #64748B;
+  color: #8A9AC3;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
@@ -6660,7 +6850,7 @@ onMounted(() => {
 
 .metric-tab.active {
   background: #FFFFFF;
-  color: #0F172A;
+  color: #1A2238;
   font-weight: 600;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
@@ -6681,7 +6871,7 @@ onMounted(() => {
 
 .time-tab.active {
   background: #EFF6FF;
-  color: #3B82F6;
+  color: #396CFF;
   font-weight: 600;
 }
 
@@ -6741,24 +6931,24 @@ onMounted(() => {
 .core-metric-value {
   font-size: 24px;
   font-weight: 800;
-  color: #0F172A;
+  color: #1A2238;
   font-family: 'SF Mono', Monaco, monospace;
   line-height: 1.1;
 }
 
 .core-metric-value.good { color: #059669; }
 .core-metric-value.warning { color: #D97706; }
-.core-metric-value.danger { color: #DC2626; }
+.core-metric-value.danger { color: #FF4C61; }
 
 .core-metric-unit {
   font-size: 11px;
-  color: #64748B;
+  color: #8A9AC3;
   margin-top: -2px;
 }
 
 .core-metric-label {
   font-size: 12px;
-  color: #64748B;
+  color: #8A9AC3;
 }
 
 .range-card .range-values {
@@ -6770,7 +6960,7 @@ onMounted(() => {
 .range-high {
   font-size: 18px;
   font-weight: 700;
-  color: #DC2626;
+  color: #FF4C61;
   font-family: 'SF Mono', Monaco, monospace;
 }
 
@@ -6783,7 +6973,7 @@ onMounted(() => {
 .range-low {
   font-size: 18px;
   font-weight: 700;
-  color: #3B82F6;
+  color: #396CFF;
   font-family: 'SF Mono', Monaco, monospace;
 }
 
@@ -6798,7 +6988,7 @@ onMounted(() => {
   gap: 6px;
   font-size: 15px;
   font-weight: 600;
-  color: #0F172A;
+  color: #1A2238;
   margin-bottom: 14px;
 }
 
@@ -6864,14 +7054,14 @@ onMounted(() => {
 }
 
 .chart-line {
-  stroke: #3B82F6;
+  stroke: #396CFF;
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
 .chart-point {
-  fill: #3B82F6;
+  fill: #396CFF;
   stroke: #FFFFFF;
   stroke-width: 2;
   cursor: pointer;
@@ -6918,24 +7108,24 @@ onMounted(() => {
 
 .point-detail-time {
   font-size: 13px;
-  color: #64748B;
+  color: #8A9AC3;
 }
 
 .point-detail-value {
   flex: 1;
   font-size: 18px;
   font-weight: 700;
-  color: #0F172A;
+  color: #1A2238;
   font-family: 'SF Mono', Monaco, monospace;
 }
 
 .point-detail-value .abnormal {
-  color: #DC2626;
+  color: #FF4C61;
 }
 
 .point-detail-unit {
   font-size: 12px;
-  color: #64748B;
+  color: #8A9AC3;
   font-weight: 400;
   margin-left: 4px;
 }
@@ -6947,7 +7137,7 @@ onMounted(() => {
   font-weight: 600;
 }
 .point-detail-tag.normal { background: rgba(16, 185, 129, 0.12); color: #059669; }
-.point-detail-tag.high { background: rgba(239, 68, 68, 0.12); color: #DC2626; }
+.point-detail-tag.high { background: rgba(255, 76, 97, 0.12); color: #FF4C61; }
 .point-detail-tag.critical { background: rgba(220, 38, 38, 0.15); color: #991B1B; }
 
 /* 历史追溯区 */
@@ -6965,7 +7155,7 @@ onMounted(() => {
   align-items: center;
   gap: 12px;
   padding: 14px 0;
-  border-bottom: 1px solid #F1F5F9;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.04);
 }
 
 .history-item-v2:last-child {
@@ -6985,7 +7175,7 @@ onMounted(() => {
 
 .hi-date {
   font-size: 13px;
-  color: #0F172A;
+  color: #1A2238;
   font-weight: 500;
 }
 
@@ -7004,12 +7194,12 @@ onMounted(() => {
 .hi-value {
   font-size: 20px;
   font-weight: 700;
-  color: #0F172A;
+  color: #1A2238;
   font-family: 'SF Mono', Monaco, monospace;
 }
 
 .hi-value.abnormal {
-  color: #DC2626;
+  color: #FF4C61;
 }
 
 .hi-value.critical {
@@ -7019,7 +7209,7 @@ onMounted(() => {
 
 .hi-unit {
   font-size: 12px;
-  color: #64748B;
+  color: #8A9AC3;
 }
 
 .hi-tag {
@@ -7030,7 +7220,7 @@ onMounted(() => {
   flex-shrink: 0;
 }
 .hi-tag.normal { background: rgba(16, 185, 129, 0.12); color: #059669; }
-.hi-tag.high { background: rgba(239, 68, 68, 0.12); color: #DC2626; }
+.hi-tag.high { background: rgba(255, 76, 97, 0.12); color: #FF4C61; }
 .hi-tag.critical { background: rgba(220, 38, 38, 0.18); color: #991B1B; }
 .hi-tag.warning { background: rgba(245, 158, 11, 0.12); color: #D97706; }
 
@@ -7059,7 +7249,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #DC2626;
+  color: #FF4C61;
   font-size: 20px;
   flex-shrink: 0;
 }
@@ -7084,7 +7274,7 @@ onMounted(() => {
 .urgent-value {
   font-size: 20px;
   font-weight: 800;
-  color: #DC2626;
+  color: #FF4C61;
   font-family: 'SF Mono', Monaco, monospace;
 }
 
@@ -7100,7 +7290,7 @@ onMounted(() => {
 }
 
 .urgent-arrow {
-  color: #DC2626;
+  color: #FF4C61;
   font-size: 16px;
 }
 
@@ -7170,17 +7360,17 @@ onMounted(() => {
 .summary-stat .stat-value {
   font-size: 14px;
   font-weight: 700;
-  color: #0F172A;
+  color: #1A2238;
   font-family: 'SF Mono', Monaco, monospace;
 }
 
 .summary-stat .stat-value.accent-green { color: #059669; }
-.summary-stat .stat-value.accent-red { color: #DC2626; }
-.summary-stat .stat-value small { font-size: 10px; font-weight: 500; color: #64748B; }
+.summary-stat .stat-value.accent-red { color: #FF4C61; }
+.summary-stat .stat-value small { font-size: 10px; font-weight: 500; color: #8A9AC3; }
 
 .summary-stat .stat-label {
   font-size: 10px;
-  color: #64748B;
+  color: #8A9AC3;
 }
 
 /* 多维透视区 */
@@ -7194,7 +7384,7 @@ onMounted(() => {
 
 .chart-label {
   font-size: 12px;
-  color: #64748B;
+  color: #8A9AC3;
   margin-bottom: 8px;
 }
 
@@ -7290,24 +7480,24 @@ onMounted(() => {
 
 .point-detail-time-v3 {
   font-size: 11px;
-  color: #64748B;
+  color: #8A9AC3;
 }
 
 .point-detail-value-v3 {
   font-size: 18px;
   font-weight: 700;
-  color: #0F172A;
+  color: #1A2238;
   font-family: 'SF Mono', Monaco, monospace;
 }
 
 .point-detail-value-v3.abnormal {
-  color: #DC2626;
+  color: #FF4C61;
 }
 
 .point-detail-value-v3 small {
   font-size: 12px;
   font-weight: 400;
-  color: #64748B;
+  color: #8A9AC3;
   margin-left: 4px;
 }
 
@@ -7318,7 +7508,7 @@ onMounted(() => {
   font-weight: 600;
 }
 .point-detail-tag-v3.normal { background: rgba(16, 185, 129, 0.12); color: #059669; }
-.point-detail-tag-v3.high { background: rgba(239, 68, 68, 0.12); color: #DC2626; }
+.point-detail-tag-v3.high { background: rgba(255, 76, 97, 0.12); color: #FF4C61; }
 .point-detail-tag-v3.critical { background: rgba(220, 38, 38, 0.18); color: #991B1B; }
 
 /* 详情溯源区 Records */
@@ -7336,7 +7526,7 @@ onMounted(() => {
   align-items: center;
   gap: 12px;
   padding: 12px 0;
-  border-bottom: 1px solid #F1F5F9;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.04);
   position: relative;
 }
 
@@ -7358,7 +7548,7 @@ onMounted(() => {
   top: 4px;
   right: 16px;
   font-size: 9px;
-  color: #DC2626;
+  color: #FF4C61;
   background: rgba(220, 38, 38, 0.1);
   padding: 2px 6px;
   border-radius: 4px;
@@ -7375,7 +7565,7 @@ onMounted(() => {
 
 .record-date {
   font-size: 13px;
-  color: #0F172A;
+  color: #1A2238;
   font-weight: 500;
 }
 
@@ -7394,12 +7584,12 @@ onMounted(() => {
 .record-value {
   font-size: 18px;
   font-weight: 700;
-  color: #0F172A;
+  color: #1A2238;
   font-family: 'SF Mono', Monaco, monospace;
 }
 
 .record-value.abnormal {
-  color: #DC2626;
+  color: #FF4C61;
 }
 
 .record-value.critical {
@@ -7409,7 +7599,7 @@ onMounted(() => {
 
 .record-unit {
   font-size: 12px;
-  color: #64748B;
+  color: #8A9AC3;
 }
 
 .record-tag {
@@ -7420,7 +7610,7 @@ onMounted(() => {
   flex-shrink: 0;
 }
 .record-tag.normal { background: rgba(16, 185, 129, 0.12); color: #059669; }
-.record-tag.high { background: rgba(239, 68, 68, 0.12); color: #DC2626; }
+.record-tag.high { background: rgba(255, 76, 97, 0.12); color: #FF4C61; }
 .record-tag.critical { background: rgba(220, 38, 38, 0.18); color: #991B1B; }
 .record-tag.warning { background: rgba(245, 158, 11, 0.12); color: #D97706; }
 
@@ -7443,7 +7633,7 @@ onMounted(() => {
 }
 
 .urgent-icon-sm {
-  color: #DC2626;
+  color: #FF4C61;
   font-size: 16px;
 }
 
@@ -7456,7 +7646,7 @@ onMounted(() => {
 .urgent-value-sm {
   font-size: 14px;
   font-weight: 700;
-  color: #DC2626;
+  color: #FF4C61;
   font-family: 'SF Mono', Monaco, monospace;
 }
 
@@ -7467,7 +7657,7 @@ onMounted(() => {
 
 .urgent-arrow-sm {
   margin-left: auto;
-  color: #DC2626;
+  color: #FF4C61;
   font-size: 12px;
 }
 
@@ -7547,7 +7737,7 @@ onMounted(() => {
 .mini-value {
   font-size: 16px;
   font-weight: 700;
-  color: #0F172A;
+  color: #1A2238;
   font-family: 'SF Mono', Monaco, monospace;
 }
 
@@ -7557,12 +7747,12 @@ onMounted(() => {
 
 .mini-value.good { color: #059669; }
 .mini-value.warning { color: #D97706; }
-.mini-value.danger { color: #DC2626; }
-.mini-value.accent-red { color: #DC2626; }
+.mini-value.danger { color: #FF4C61; }
+.mini-value.accent-red { color: #FF4C61; }
 
 .mini-label {
   font-size: 10px;
-  color: #64748B;
+  color: #8A9AC3;
 }
 
 /* 行为关联趋势图区域 */
@@ -7611,19 +7801,19 @@ onMounted(() => {
 }
 
 .chart-svg-v4 .chart-line {
-  stroke: #3B82F6;
+  stroke: #396CFF;
   stroke-width: 2;
-  filter: drop-shadow(0 1px 2px rgba(59, 130, 246, 0.3));
+  filter: drop-shadow(0 1px 2px rgba(74, 144, 217, 0.3));
 }
 
 .chart-svg-v4 .chart-point {
-  fill: #3B82F6;
+  fill: #396CFF;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .chart-svg-v4 .chart-point.abnormal {
-  fill: #DC2626;
+  fill: #FF4C61;
 }
 
 .chart-svg-v4 .chart-point.selected {
@@ -7705,7 +7895,7 @@ onMounted(() => {
 
 .tooltip-time {
   font-size: 10px;
-  color: #64748B;
+  color: #8A9AC3;
 }
 
 /* 7日预警分布（压缩版） */
@@ -7721,7 +7911,7 @@ onMounted(() => {
 
 .dist-label {
   font-size: 11px;
-  color: #64748B;
+  color: #8A9AC3;
   flex-shrink: 0;
 }
 
@@ -7754,7 +7944,7 @@ onMounted(() => {
 .dist-count {
   font-size: 12px;
   font-weight: 600;
-  color: #DC2626;
+  color: #FF4C61;
   flex-shrink: 0;
 }
 
@@ -7782,12 +7972,12 @@ onMounted(() => {
   cursor: pointer;
   transition: all 0.2s;
   font-size: 12px;
-  color: #64748B;
+  color: #8A9AC3;
 }
 
 .behavior-tab.active {
   background: #EFF6FF;
-  border-color: #3B82F6;
+  border-color: #396CFF;
   color: #1D4ED8;
   font-weight: 600;
 }
@@ -7827,12 +8017,12 @@ onMounted(() => {
 .med-name {
   font-size: 13px;
   font-weight: 500;
-  color: #0F172A;
+  color: #1A2238;
 }
 
 .med-dose {
   font-size: 11px;
-  color: #64748B;
+  color: #8A9AC3;
 }
 
 .med-time {
@@ -7853,8 +8043,8 @@ onMounted(() => {
 }
 
 .med-status.missed {
-  background: rgba(239, 68, 68, 0.12);
-  color: #DC2626;
+  background: rgba(255, 76, 97, 0.12);
+  color: #FF4C61;
 }
 
 /* 饮食记录 */
@@ -7881,12 +8071,12 @@ onMounted(() => {
 .diet-meal {
   font-size: 13px;
   font-weight: 500;
-  color: #0F172A;
+  color: #1A2238;
 }
 
 .diet-desc {
   font-size: 11px;
-  color: #64748B;
+  color: #8A9AC3;
 }
 
 .diet-tag {
@@ -7907,8 +8097,8 @@ onMounted(() => {
 }
 
 .diet-tag.high {
-  background: rgba(239, 68, 68, 0.12);
-  color: #DC2626;
+  background: rgba(255, 76, 97, 0.12);
+  color: #FF4C61;
 }
 
 /* 运动数据 */
@@ -7999,7 +8189,7 @@ onMounted(() => {
 
 .day-label {
   font-size: 10px;
-  color: #64748B;
+  color: #8A9AC3;
 }
 
 /* 最近测量（压缩版） */
@@ -8029,7 +8219,7 @@ onMounted(() => {
 
 .rc-time {
   font-size: 11px;
-  color: #64748B;
+  color: #8A9AC3;
   width: 80px;
 }
 
@@ -8037,12 +8227,12 @@ onMounted(() => {
   flex: 1;
   font-size: 16px;
   font-weight: 700;
-  color: #0F172A;
+  color: #1A2238;
   font-family: 'SF Mono', Monaco, monospace;
 }
 
 .rc-value.critical {
-  color: #DC2626;
+  color: #FF4C61;
 }
 
 .rc-tag {
@@ -8053,7 +8243,7 @@ onMounted(() => {
 }
 
 .rc-tag.normal { background: rgba(16, 185, 129, 0.12); color: #059669; }
-.rc-tag.high { background: rgba(239, 68, 68, 0.12); color: #DC2626; }
+.rc-tag.high { background: rgba(255, 76, 97, 0.12); color: #FF4C61; }
 .rc-tag.critical { background: rgba(220, 38, 38, 0.18); color: #991B1B; }
 .rc-tag.warning { background: rgba(245, 158, 11, 0.12); color: #D97706; }
 
@@ -8072,13 +8262,13 @@ onMounted(() => {
 
 .view-more-btn span {
   font-size: 12px;
-  color: #3B82F6;
+  color: #396CFF;
   font-weight: 500;
 }
 
 .view-more-btn .van-icon {
   font-size: 12px;
-  color: #3B82F6;
+  color: #396CFF;
 }
 
 .view-more-btn:active {
@@ -8104,7 +8294,7 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 12px 14px;
-  border-bottom: 1px solid #F1F5F9;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.04);
   background: #FAFBFC;
 }
 
@@ -8117,7 +8307,7 @@ onMounted(() => {
 
 .cv-card-header .card-period {
   font-size: 11px;
-  color: #64748B;
+  color: #8A9AC3;
   margin-left: 8px;
 }
 
@@ -8202,11 +8392,11 @@ onMounted(() => {
 }
 
 .section-dot.anomaly {
-  background: #DC2626;
+  background: #FF4C61;
 }
 
 .section-dot.intervention {
-  background: #2563EB;
+  background: #3978C2;
 }
 
 .ai-nav-items {
@@ -8228,7 +8418,7 @@ onMounted(() => {
 
 .ai-nav-item.anomaly.critical {
   background: #FEF2F2;
-  border-left: 2px solid #DC2626;
+  border-left: 2px solid #FF4C61;
 }
 
 .ai-nav-item.anomaly.warning {
@@ -8238,7 +8428,7 @@ onMounted(() => {
 
 .ai-nav-item.anomaly.info {
   background: #EFF6FF;
-  border-left: 2px solid #2563EB;
+  border-left: 2px solid #3978C2;
 }
 
 .ai-nav-item.intervention {
@@ -8293,7 +8483,7 @@ onMounted(() => {
 }
 
 .brief-indicator.critical {
-  background: #DC2626;
+  background: #FF4C61;
   box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2);
   animation: pulse-critical 1.5s ease-in-out infinite;
 }
@@ -8303,7 +8493,7 @@ onMounted(() => {
 }
 
 .brief-indicator.ai {
-  background: #2563EB;
+  background: #3978C2;
 }
 
 @keyframes pulse-critical {
@@ -8313,7 +8503,7 @@ onMounted(() => {
 
 .brief-label {
   font-size: 11px;
-  color: #64748B;
+  color: #8A9AC3;
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -8329,7 +8519,7 @@ onMounted(() => {
 .brief-value {
   font-size: 24px;
   font-weight: 700;
-  color: #DC2626;
+  color: #FF4C61;
   font-family: 'SF Mono', Monaco, monospace;
 }
 
@@ -8339,7 +8529,7 @@ onMounted(() => {
 
 .brief-unit {
   font-size: 12px;
-  color: #64748B;
+  color: #8A9AC3;
 }
 
 .brief-trend {
@@ -8348,8 +8538,8 @@ onMounted(() => {
 }
 
 .brief-trend.improving { color: #10B981; }
-.brief-trend.stable { color: #64748B; }
-.brief-trend.declining { color: #DC2626; }
+.brief-trend.stable { color: #8A9AC3; }
+.brief-trend.declining { color: #FF4C61; }
 
 .brief-status {
   font-size: 14px;
@@ -8399,7 +8589,7 @@ onMounted(() => {
 
 .history-link {
   font-size: 11px;
-  color: #2563EB;
+  color: #3978C2;
   cursor: pointer;
   font-weight: 500;
 }
@@ -8419,7 +8609,7 @@ onMounted(() => {
   padding: 8px;
   text-align: center;
   font-size: 12px;
-  color: #64748B;
+  color: #8A9AC3;
   background: #F8FAFC;
   border: 1px solid #E2E8F0;
   border-radius: 6px;
@@ -8429,8 +8619,8 @@ onMounted(() => {
 
 .metric-btn.active {
   background: #FFFFFF;
-  border-color: #2563EB;
-  color: #2563EB;
+  border-color: #3978C2;
+  color: #3978C2;
   font-weight: 600;
 }
 
@@ -8451,18 +8641,18 @@ onMounted(() => {
   display: block;
   font-size: 18px;
   font-weight: 700;
-  color: #0F172A;
+  color: #1A2238;
   font-family: 'SF Mono', Monaco, monospace;
   margin-bottom: 4px;
 }
 
 .stat-num.good { color: #059669; }
 .stat-num.warning { color: #D97706; }
-.stat-num.danger { color: #DC2626; }
+.stat-num.danger { color: #FF4C61; }
 
 .stat-label {
   font-size: 10px;
-  color: #64748B;
+  color: #8A9AC3;
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
@@ -8483,7 +8673,7 @@ onMounted(() => {
   align-items: center;
   gap: 4px;
   font-size: 10px;
-  color: #64748B;
+  color: #8A9AC3;
 }
 
 .legend-item .dot {
@@ -8492,8 +8682,43 @@ onMounted(() => {
   border-radius: 50%;
 }
 
-.legend-item .dot.normal { background: #2563EB; }
-.legend-item .dot.abnormal { background: #DC2626; }
+.legend-item .dot.risk-red { background: #FF4C61; }
+.legend-item .dot.risk-yellow { background: #F59E0B; }
+.legend-item .dot.risk-green { background: #10B981; }
+.legend-item .dot.bp-systolic { background: #E8584F; }
+.legend-item .dot.bp-diastolic { background: #5B8FF9; }
+.legend-item .dot-line {
+  width: 14px;
+  height: 2px;
+  border-radius: 1px;
+  background: #8A9AC3;
+}
+.legend-item .dot-line.solid {
+  background: #8A9AC3;
+}
+.legend-item .dot-line.dashed {
+  background: none;
+  border-top: 2px dashed #8A9AC3;
+}
+
+/* 异常数据点脉冲动画 */
+.pulse-halo {
+  transform-origin: center;
+}
+.pulse-danger {
+  animation: halo-pulse-danger 1.8s ease-in-out infinite;
+}
+.pulse-warning {
+  animation: halo-pulse-warning 2.2s ease-in-out infinite;
+}
+@keyframes halo-pulse-danger {
+  0%, 100% { opacity: 0.25; r: 6; }
+  50% { opacity: 0.08; r: 9; }
+}
+@keyframes halo-pulse-warning {
+  0%, 100% { opacity: 0.2; r: 5.5; }
+  50% { opacity: 0.06; r: 8; }
+}
 
 .chart-area-unified .chart-y-axis {
   display: flex;
@@ -8526,14 +8751,14 @@ onMounted(() => {
 }
 
 .chart-svg-clinical .trend-line {
-  stroke: #2563EB;
+  stroke: #3978C2;
   stroke-width: 1.5;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
 .chart-svg-clinical .data-point {
-  fill: #2563EB;
+  fill: #3978C2;
   stroke: #FFFFFF;
   stroke-width: 1.5;
   cursor: pointer;
@@ -8541,7 +8766,7 @@ onMounted(() => {
 }
 
 .chart-svg-clinical .data-point.abnormal {
-  fill: #DC2626;
+  fill: #FF4C61;
 }
 
 .chart-svg-clinical .data-point.selected {
@@ -8657,7 +8882,7 @@ onMounted(() => {
 
 .activity-card-title {
   font-size: 11px;
-  color: #64748B;
+  color: #8A9AC3;
   font-weight: 500;
 }
 
@@ -8682,7 +8907,7 @@ onMounted(() => {
 .activity-card-value {
   font-size: 20px;
   font-weight: 700;
-  color: #0F172A;
+  color: #1A2238;
   font-family: 'SF Mono', Monaco, monospace;
   line-height: 1.2;
 }
@@ -8721,7 +8946,7 @@ onMounted(() => {
 }
 
 .standing-block.filled {
-  background: #3B82F6;
+  background: #396CFF;
 }
 
 /* 健康日志 */
@@ -8750,7 +8975,7 @@ onMounted(() => {
 .hlog-filter-btn {
   padding: 5px 12px;
   font-size: 11px;
-  color: #64748B;
+  color: #8A9AC3;
   background: #F1F5F9;
   border-radius: 14px;
   cursor: pointer;
@@ -8760,7 +8985,7 @@ onMounted(() => {
 }
 
 .hlog-filter-btn.active {
-  background: #2563EB;
+  background: #3978C2;
   color: #FFFFFF;
 }
 
@@ -8854,8 +9079,8 @@ onMounted(() => {
 }
 
 .hlog-tag.tag-green { background: #ECFDF5; color: #059669; }
-.hlog-tag.tag-red { background: #FEF2F2; color: #DC2626; }
-.hlog-tag.tag-blue { background: #EFF6FF; color: #2563EB; }
+.hlog-tag.tag-red { background: #FEF2F2; color: #FF4C61; }
+.hlog-tag.tag-blue { background: #EFF6FF; color: #3978C2; }
 .hlog-tag.tag-yellow { background: #FFFBEB; color: #D97706; }
 
 .hlog-content-body {
@@ -8906,7 +9131,7 @@ onMounted(() => {
   margin-top: 4px;
   border-top: 1px solid #F1F5F9;
   font-size: 12px;
-  color: #2563EB;
+  color: #3978C2;
   font-weight: 500;
   cursor: pointer;
 }
@@ -8927,13 +9152,13 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 16px;
-  border-bottom: 1px solid #F1F5F9;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.04);
 }
 
 .hlog-popup-title {
   font-size: 15px;
   font-weight: 600;
-  color: #0F172A;
+  color: #1A2238;
 }
 
 .hlog-popup-close {
@@ -8949,7 +9174,7 @@ onMounted(() => {
   padding: 12px 16px;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
-  border-bottom: 1px solid #F1F5F9;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.04);
 }
 
 .hlog-cal-day {
@@ -8969,7 +9194,7 @@ onMounted(() => {
 }
 
 .hlog-cal-day.active {
-  background: #2563EB;
+  background: #3978C2;
 }
 
 .hlog-cal-day.active .cal-weekday,
@@ -8990,14 +9215,14 @@ onMounted(() => {
 }
 
 .hlog-cal-day.today .cal-daynum {
-  color: #2563EB;
+  color: #3978C2;
 }
 
 .cal-dot {
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: #2563EB;
+  background: #3978C2;
   margin-top: 3px;
 }
 
@@ -9038,12 +9263,12 @@ onMounted(() => {
 .overlay-title {
   font-size: 15px;
   font-weight: 600;
-  color: #0F172A;
+  color: #1A2238;
 }
 
 .overlay-close {
   font-size: 20px;
-  color: #64748B;
+  color: #8A9AC3;
   cursor: pointer;
 }
 
@@ -9064,7 +9289,7 @@ onMounted(() => {
 .section-label {
   font-size: 11px;
   font-weight: 600;
-  color: #64748B;
+  color: #8A9AC3;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: 10px;
@@ -9106,7 +9331,7 @@ onMounted(() => {
 .dist-week {
   width: 32px;
   font-size: 10px;
-  color: #64748B;
+  color: #8A9AC3;
   flex-shrink: 0;
 }
 
@@ -9132,7 +9357,7 @@ onMounted(() => {
 }
 
 .dist-bar-clinical.critical {
-  background: #DC2626;
+  background: #FF4C61;
 }
 
 .dist-bar-clinical.last-week {
@@ -9203,7 +9428,7 @@ onMounted(() => {
 
 .intervention-priority.high {
   background: #FEE2E2;
-  color: #DC2626;
+  color: #FF4C61;
 }
 
 .intervention-priority.medium {
@@ -9213,7 +9438,7 @@ onMounted(() => {
 
 .intervention-priority.low {
   background: #F1F5F9;
-  color: #64748B;
+  color: #8A9AC3;
 }
 
 .intervention-text {
@@ -9260,17 +9485,17 @@ onMounted(() => {
 
 .ind-trend.stable {
   background: #F1F5F9;
-  color: #64748B;
+  color: #8A9AC3;
 }
 
 .ind-trend.declining {
   background: #FEE2E2;
-  color: #DC2626;
+  color: #FF4C61;
 }
 
 .ind-detail {
   font-size: 12px;
-  color: #64748B;
+  color: #8A9AC3;
   flex: 1;
 }
 
@@ -9360,7 +9585,7 @@ onMounted(() => {
 
 .event-time-detail {
   font-size: 11px;
-  color: #64748B;
+  color: #8A9AC3;
   font-family: 'SF Mono', Monaco, monospace;
 }
 
@@ -9382,7 +9607,7 @@ onMounted(() => {
   align-items: center;
   gap: 12px;
   padding: 12px;
-  border-bottom: 1px solid #F1F5F9;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.04);
 }
 
 .history-row:last-child {
@@ -9425,18 +9650,18 @@ onMounted(() => {
 .h-val {
   font-size: 18px;
   font-weight: 700;
-  color: #0F172A;
+  color: #1A2238;
   font-family: 'SF Mono', Monaco, monospace;
 }
 
 .history-row.abnormal .h-val,
 .history-row.critical .h-val {
-  color: #DC2626;
+  color: #FF4C61;
 }
 
 .h-unit {
   font-size: 11px;
-  color: #64748B;
+  color: #8A9AC3;
 }
 
 .history-tag {
@@ -9449,6 +9674,6 @@ onMounted(() => {
 
 .history-tag.normal { background: #ECFDF5; color: #059669; }
 .history-tag.high { background: #FEF3C7; color: #D97706; }
-.history-tag.critical { background: #FEE2E2; color: #DC2626; }
+.history-tag.critical { background: #FEE2E2; color: #FF4C61; }
 .history-tag.warning { background: #FEF3C7; color: #D97706; }
 </style>

@@ -64,8 +64,8 @@ CREATE TABLE IF NOT EXISTS verification_codes (
 
 -- 插入测试数据
 INSERT INTO doctors (name, title, hospital, department, phone, bindCode, isWhitelisted) VALUES
-('张医生', '主任医师', '北京协和医院', '心内科', '13800138000', 'BIND001', TRUE),
-('李医生', '副主任医师', '上海瑞金医院', '神经内科', '13900139000', 'BIND002', TRUE);
+('张医生', '主任医师', '兰州大学第一医院', '心内科', '13800138000', 'BIND001', TRUE),
+('李医生', '副主任医师', '兰州大学第一医院', '神经内科', '13900139000', 'BIND002', TRUE);
 
 INSERT INTO patients (name, gender, age, phone) VALUES
 ('王小明', 'male', 35, '13700137001'),
@@ -81,3 +81,18 @@ INSERT INTO doctor_patient_rel (doctorId, patientId) VALUES
 INSERT INTO activities (name, linkTemplate, isActive) VALUES
 ('2024健康管理计划', 'https://youyou.com/activity/health2024?doctor={doctorId}&code={bindCode}', TRUE),
 ('慢病随访活动', 'https://youyou.com/activity/chronic?doctor={doctorId}', TRUE);
+
+-- 医生收入记录表
+CREATE TABLE IF NOT EXISTS doctor_incomes (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  doctorId INT NOT NULL,
+  patientId INT,
+  category VARCHAR(30) NOT NULL COMMENT 'monitoring|consultation|plan_review|report_review|referral_bonus',
+  amount DECIMAL(10,2) NOT NULL,
+  description VARCHAR(200),
+  settlementStatus VARCHAR(20) DEFAULT 'pending' COMMENT 'settled|pending|processing',
+  settledAt DATETIME,
+  incomeDate DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (doctorId) REFERENCES doctors(id),
+  FOREIGN KEY (patientId) REFERENCES patients(id)
+);

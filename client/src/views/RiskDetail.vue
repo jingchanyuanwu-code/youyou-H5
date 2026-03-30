@@ -210,7 +210,8 @@ onMounted(() => {
 <style scoped>
 .risk-detail-page {
   min-height: 100vh;
-  background: #F7F8FA;
+  background: #F2F5FA;
+  font-family: 'Inter', 'SF Pro Display', 'PingFang SC', -apple-system, sans-serif;
 }
 
 /* 导航栏 */
@@ -221,7 +222,7 @@ onMounted(() => {
   height: 48px;
   padding: 0 16px;
   background: #FFF;
-  border-bottom: 1px solid #EBEDF0;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
 }
 
 .nav-back {
@@ -230,17 +231,17 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
-  color: #323233;
+  border-radius: 12px;
+  color: #1A2238;
   font-size: 18px;
   cursor: pointer;
 }
-.nav-back:active { background: #F7F8FA; }
+.nav-back:active { background: rgba(57, 108, 255, 0.08); }
 
 .nav-title {
   font-size: 16px;
-  font-weight: 600;
-  color: #323233;
+  font-weight: 800;
+  color: #1A2238;
 }
 
 .nav-placeholder { width: 32px; }
@@ -250,7 +251,7 @@ onMounted(() => {
   display: flex;
   background: #FFF;
   padding: 0 16px;
-  border-bottom: 1px solid #EBEDF0;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
 }
 
 .tab-item {
@@ -258,14 +259,14 @@ onMounted(() => {
   text-align: center;
   padding: 14px 0;
   font-size: 14px;
-  color: #969799;
+  color: #8A9AC3;
   position: relative;
   cursor: pointer;
   transition: color 0.2s;
 }
 
 .tab-item.active {
-  color: #3B82F6;
+  color: #396CFF;
   font-weight: 600;
 }
 
@@ -277,7 +278,7 @@ onMounted(() => {
   transform: translateX(-50%);
   width: 24px;
   height: 3px;
-  background: #3B82F6;
+  background: #396CFF;
   border-radius: 2px;
 }
 
@@ -297,13 +298,13 @@ onMounted(() => {
   gap: 12px;
   padding: 16px;
   background: #FFF;
-  border-radius: 12px;
+  border-radius: 24px;
 }
 .sk-avatar {
   width: 40px;
   height: 40px;
-  border-radius: 10px;
-  background: linear-gradient(90deg, #F3F4F6 25%, #E5E7EB 50%, #F3F4F6 75%);
+  border-radius: 12px;
+  background: linear-gradient(90deg, #E8ECF4 25%, #D6DDE8 50%, #E8ECF4 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
@@ -316,7 +317,7 @@ onMounted(() => {
 .sk-line {
   height: 12px;
   border-radius: 4px;
-  background: linear-gradient(90deg, #F3F4F6 25%, #E5E7EB 50%, #F3F4F6 75%);
+  background: linear-gradient(90deg, #E8ECF4 25%, #D6DDE8 50%, #E8ECF4 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
@@ -333,7 +334,7 @@ onMounted(() => {
 .empty {
   text-align: center;
   padding: 80px 0;
-  color: #9CA3AF;
+  color: #8A9AC3;
 }
 .empty-icon {
   font-size: 48px;
@@ -344,7 +345,7 @@ onMounted(() => {
 .empty-inline {
   text-align: center;
   padding: 40px;
-  color: #9CA3AF;
+  color: #8A9AC3;
   font-size: 14px;
 }
 
@@ -357,7 +358,7 @@ onMounted(() => {
 
 .patient-card {
   background: #FFF;
-  border-radius: 12px;
+  border-radius: 24px;
   padding: 14px;
 }
 
@@ -371,8 +372,8 @@ onMounted(() => {
 .avatar {
   width: 40px;
   height: 40px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #3B82F6, #2563EB);
+  border-radius: 14px;
+  background: linear-gradient(135deg, #396CFF, #6B8FFF);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -396,49 +397,49 @@ onMounted(() => {
 
 .name {
   font-size: 15px;
-  font-weight: 600;
-  color: #1F2937;
+  font-weight: 800;
+  color: #1A2238;
 }
 
 .age {
   font-size: 13px;
-  color: #6B7280;
+  color: #8A9AC3;
 }
 
 .week-count {
   font-size: 11px;
   padding: 2px 6px;
   background: #FEE2E2;
-  color: #DC2626;
-  border-radius: 4px;
+  color: #FF4C61;
+  border-radius: 6px;
   margin-left: auto;
 }
 
 .phone {
   font-size: 13px;
-  color: #9CA3AF;
+  color: #8A9AC3;
   font-family: 'SF Mono', Monaco, monospace;
 }
 
 .call-btn {
   width: 36px;
   height: 36px;
-  border-radius: 10px;
-  background: #F3F4F6;
+  border-radius: 12px;
+  background: rgba(57, 108, 255, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #3B82F6;
+  color: #396CFF;
   font-size: 18px;
   text-decoration: none;
   flex-shrink: 0;
 }
-.call-btn:active { background: #E5E7EB; }
+.call-btn:active { background: #E8ECF4; }
 
 /* 今日预警时间线 */
 .today-alerts {
   padding-left: 12px;
-  border-left: 2px solid #E5E7EB;
+  border-left: 2px solid #E8ECF4;
   margin-left: 8px;
 }
 
@@ -452,7 +453,7 @@ onMounted(() => {
 
 .alert-time {
   font-size: 13px;
-  color: #6B7280;
+  color: #8A9AC3;
   font-family: 'SF Mono', Monaco, monospace;
   width: 50px;
   flex-shrink: 0;
@@ -467,7 +468,7 @@ onMounted(() => {
   left: -17px;
   margin-right: -8px;
 }
-.alert-dot.danger { background: #EF4444; }
+.alert-dot.danger { background: #FF4C61; }
 .alert-dot.warning { background: #F59E0B; }
 
 .alert-content {
@@ -481,12 +482,12 @@ onMounted(() => {
   font-weight: 600;
   font-family: 'SF Mono', Monaco, monospace;
 }
-.alert-value.danger { color: #DC2626; }
+.alert-value.danger { color: #FF4C61; }
 .alert-value.warning { color: #D97706; }
 
 .alert-trend {
   font-size: 12px;
-  color: #DC2626;
+  color: #FF4C61;
 }
 
 /* 7日预警分布图 */
@@ -502,7 +503,7 @@ onMounted(() => {
 
 .chart-label {
   font-size: 12px;
-  color: #6B7280;
+  color: #8A9AC3;
   flex-shrink: 0;
 }
 
@@ -525,17 +526,17 @@ onMounted(() => {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #E5E7EB;
+  background: #E8ECF4;
   transition: background 0.2s;
 }
 
 .day-dot.alert::before {
-  background: #EF4444;
+  background: #FF4C61;
 }
 
 .day-label {
   font-size: 10px;
-  color: #9CA3AF;
+  color: #8A9AC3;
 }
 
 /* 最近异常 */
@@ -548,28 +549,28 @@ onMounted(() => {
 }
 
 .latest-alert .label {
-  color: #6B7280;
+  color: #8A9AC3;
 }
 
 .latest-alert .value {
   font-weight: 600;
   font-family: 'SF Mono', Monaco, monospace;
 }
-.latest-alert .value.danger { color: #DC2626; }
+.latest-alert .value.danger { color: #FF4C61; }
 .latest-alert .value.warning { color: #D97706; }
 
 .latest-alert .time {
-  color: #9CA3AF;
+  color: #8A9AC3;
   margin-left: auto;
 }
 
 /* 描述 */
 .description {
   font-size: 13px;
-  color: #6B7280;
+  color: #8A9AC3;
   padding: 10px;
   background: #F9FAFB;
-  border-radius: 8px;
+  border-radius: 12px;
   line-height: 1.5;
 }
 </style>

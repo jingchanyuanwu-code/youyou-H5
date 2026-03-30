@@ -84,12 +84,6 @@
       <van-picker :columns="activityColumns" @confirm="onActivityConfirm" @cancel="showActivityPicker = false" />
     </van-popup>
     <van-dialog v-model:show="showLogoutDialog" title="退出登录" message="确定要退出登录吗？" show-cancel-button @confirm="handleLogout" />
-
-    <!-- 底部导航 -->
-    <van-tabbar v-model="activeNav" fixed class="warm-tabbar">
-      <van-tabbar-item name="card" icon="qr">名片</van-tabbar-item>
-      <van-tabbar-item name="patients" icon="friends" @click="router.push('/patients')">患者</van-tabbar-item>
-    </van-tabbar>
   </div>
 </template>
 
@@ -107,7 +101,6 @@ const defaultAvatar = 'https://images.unsplash.com/photo-1612349317150-e413f6a5b
 const doctor = ref<Doctor | null>(null)
 const qrCode = ref('')
 const activeTab = ref<'bind' | 'activity'>('bind')
-const activeNav = ref('card')
 const showActivityPicker = ref(false)
 const showLogoutDialog = ref(false)
 const activities = ref<Activity[]>([])
@@ -197,7 +190,7 @@ onMounted(() => {
 <style scoped>
 .card-page {
   min-height: 100vh;
-  padding: 40px 20px 100px;
+  padding: 40px 20px 20px;
   position: relative;
   overflow: hidden;
 }
@@ -549,26 +542,5 @@ onMounted(() => {
   color: #CBD5E1;
   font-size: 11px;
   letter-spacing: 1px;
-}
-
-/* 暖色底部导航 - Logo 天蓝色系 */
-.warm-tabbar :deep(.van-tabbar) {
-  background: rgba(255, 255, 255, 0.9) !important;
-  backdrop-filter: blur(20px) !important;
-  -webkit-backdrop-filter: blur(20px) !important;
-  border-top: 1px solid rgba(226, 232, 240, 0.5) !important;
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.03) !important;
-}
-
-.warm-tabbar :deep(.van-tabbar-item) {
-  color: #94A3B8 !important;
-}
-
-.warm-tabbar :deep(.van-tabbar-item--active) {
-  color: #7DBDE8 !important;
-}
-
-.warm-tabbar :deep(.van-tabbar-item--active .van-tabbar-item__icon) {
-  color: #7DBDE8 !important;
 }
 </style>

@@ -4,7 +4,7 @@
     <div class="sticky-top">
       <!-- 搜索框 -->
       <div class="search-box">
-        <van-icon name="search" class="search-icon" />
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input
           v-model="keyword"
           type="text"
@@ -12,45 +12,20 @@
           class="search-input"
           @keyup.enter="handleSearch"
         />
-        <van-icon v-if="keyword" name="clear" class="clear-icon" @click="keyword = ''; handleSearch()" />
+        <svg v-if="keyword" class="clear-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" @click="keyword = ''; handleSearch()"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
       </div>
 
-      <!-- 预警统计块：临床降噪版 -->
-      <div v-if="dashboard" class="warning-tiles">
-        <div class="tile tile-glucose" @click="router.push('/risk-detail/glucose')">
-          <div class="tile-header">
-            <span class="tile-icon">&#x1F4C8;</span>
-            <span class="tile-title">血糖</span>
-          </div>
-          <span class="tile-num">{{ dashboard.glucose.todayCount }}</span>
-          <span class="tile-sub">7日累计 {{ dashboard.glucose.weekCount }} 次</span>
-        </div>
-        <div class="tile tile-bp" @click="router.push('/risk-detail/bp')">
-          <div class="tile-header">
-            <span class="tile-icon">&#x1F4A2;</span>
-            <span class="tile-title">血压</span>
-          </div>
-          <span class="tile-num">{{ dashboard.bp.todayCount }}</span>
-          <span class="tile-sub">7日累计 {{ dashboard.bp.weekCount }} 次</span>
-        </div>
-        <div class="tile tile-hr" @click="router.push('/risk-detail/hr')">
-          <div class="tile-header">
-            <span class="tile-icon">&#x1F49C;</span>
-            <span class="tile-title">心率</span>
-          </div>
-          <span class="tile-num">{{ dashboard.hr.todayCount }}</span>
-          <span class="tile-sub">7日累计 {{ dashboard.hr.weekCount }} 次</span>
-        </div>
-      </div>
-
-      <!-- 统计行 -->
-      <div class="stats-bar">
-        <span>管理 <b>{{ patients.length }}</b> 位患者</span>
-        <div class="legend">
-          <span class="dot urgent"></span>紧急
-          <span class="dot attention"></span>关注
-          <span class="dot stable"></span>平稳
-          <span class="dot offline"></span>失联
+      <!-- 筛选标签 -->
+      <div class="filter-row">
+        <div
+          v-for="f in filters"
+          :key="f.value"
+          :class="['filter-chip', { active: activeFilter === f.value }]"
+          @click="activeFilter = f.value"
+        >
+          <span v-if="f.dot" :class="['chip-dot', f.dot]"></span>
+          {{ f.label }}
+          <span class="chip-count">{{ f.count }}</span>
         </div>
       </div>
     </div>
@@ -72,111 +47,80 @@
         <!-- 真实列表 -->
         <div v-else class="patient-list">
           <div
-            v-for="patient in patients"
+            v-for="patient in sortedPatients"
             :key="patient.id"
-            :class="['patient-card', `status-${patient.status}`]"
+            class="patient-card"
             @click="goToDetail(patient.id)"
           >
-            <!-- 头像 -->
-            <div :class="['avatar', `border-${patient.status}`]">
-              <span class="avatar-text">{{ patient.name.charAt(0) }}</span>
-              <div v-if="patient.status === 'urgent'" class="pulse-ring"></div>
-            </div>
-
-            <!-- 主内容 -->
-            <div class="card-body">
-              <div class="name-row">
-                <span class="name">{{ patient.name }}</span>
-                <span class="age">{{ patient.age }}岁</span>
+            <div class="card-inner">
+              <!-- 左：头像 -->
+              <div :class="['avatar', `av-${patient.status}`]">
+                <span class="avatar-text">{{ patient.name.charAt(0) }}</span>
               </div>
 
-              <div class="info-row">
-                <!-- 预警信息 -->
-                <template v-if="patient.hasAlert && patient.alertTypes?.length">
-                  <div class="alert-tags">
-                    <span v-for="t in patient.alertTypes" :key="t" :class="['tag', `tag-${t}`]">
+              <!-- 中：信息 -->
+              <div class="card-body">
+                <div class="name-row">
+                  <span class="name">{{ patient.name }}</span>
+                  <span class="age">{{ patient.age }}岁</span>
+                  <span :class="['status-dot', `dot-${patient.status}`]"></span>
+                </div>
+
+                <div class="metric-row">
+                  <!-- 预警标签 -->
+                  <template v-if="patient.hasAlert && patient.alertTypes?.length">
+                    <span v-for="t in patient.alertTypes" :key="t" :class="['metric-tag', `mt-${t}`]">
                       {{ alertLabel(t) }}
+                      <template v-if="patient.latestAlert && patient.latestAlert.alertType === t">
+                        {{ patient.latestAlert.value }}
+                      </template>
                     </span>
-                  </div>
-                  <span v-if="patient.latestAlert" class="alert-value">
-                    <span class="value-num">{{ patient.latestAlert.value }}</span>
-                    <span class="value-unit">{{ patient.latestAlert.unit }}</span>
-                  </span>
-                </template>
-
-                <!-- 平稳状态 -->
-                <template v-else-if="patient.status === 'stable'">
-                  <div class="stable-badge">
-                    <van-icon name="shield-o" class="shield-icon" />
-                    <span>持续达标 {{ patient.stableDays || 0 }} 天</span>
-                  </div>
-                </template>
-
-                <!-- 失联状态 -->
-                <template v-else-if="patient.status === 'offline'">
-                  <div class="offline-badge">
-                    <van-icon name="clock-o" />
-                    <span>{{ patient.statusText }}</span>
-                  </div>
-                </template>
-
-                <!-- 时间 -->
-                <span class="time">{{ formatTime(patient.lastMeasureTime || patient.createdAt) }}</span>
+                  </template>
+                  <!-- 平稳 -->
+                  <template v-else-if="patient.status === 'stable'">
+                    <span class="metric-stable">达标 {{ patient.stableDays || 0 }}天</span>
+                  </template>
+                  <!-- 失联 -->
+                  <template v-else-if="patient.status === 'offline'">
+                    <span class="metric-offline">{{ patient.statusText || '未监测' }}</span>
+                  </template>
+                </div>
               </div>
-            </div>
 
-            <!-- 状态标签 -->
-            <div :class="['status-indicator', `ind-${patient.status}`]">
-              {{ statusLabel(patient.status) }}
+              <!-- 右：时间 -->
+              <span class="card-time">{{ formatTime(patient.lastMeasureTime || patient.createdAt) }}</span>
             </div>
           </div>
 
           <!-- 空状态 -->
-          <div v-if="patients.length === 0 && !loading" class="empty">
-            <van-icon name="friends-o" class="empty-icon" />
+          <div v-if="sortedPatients.length === 0 && !loading" class="empty">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="empty-icon"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             <p>暂无患者数据</p>
           </div>
 
-          <div v-if="patients.length > 0" class="list-end">已显示全部</div>
+          <div v-if="sortedPatients.length > 0" class="list-end">已显示全部</div>
         </div>
       </van-pull-refresh>
     </div>
-
-    <!-- 底部导航 -->
-    <van-tabbar v-model="activeNav" fixed class="bottom-nav">
-      <van-tabbar-item name="card" icon="qr" @click="router.push('/card')">名片</van-tabbar-item>
-      <van-tabbar-item name="patients" icon="friends">患者</van-tabbar-item>
-    </van-tabbar>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { getPatients, getRiskDashboard } from '@/api'
-import type { Patient, RiskDashboard, PatientStatus } from '@/api'
+import { getPatients } from '@/api'
+import type { Patient } from '@/api'
 
 const router = useRouter()
 const keyword = ref('')
 const patients = ref<Patient[]>([])
 const loading = ref(true)
 const refreshing = ref(false)
-const activeNav = ref('patients')
-const dashboard = ref<RiskDashboard | null>(null)
+const activeFilter = ref('all')
 
 const alertLabel = (type: string) => {
   const map: Record<string, string> = { glucose: '血糖', bp: '血压', hr: '心率' }
   return map[type] || type
-}
-
-const statusLabel = (status: PatientStatus | undefined) => {
-  const map: Record<string, string> = {
-    urgent: '紧急',
-    attention: '关注',
-    stable: '平稳',
-    offline: '失联',
-  }
-  return map[status || ''] || ''
 }
 
 const formatTime = (dateStr: string) => {
@@ -187,21 +131,41 @@ const formatTime = (dateStr: string) => {
   const mins = Math.floor(diff / 60000)
   const hours = Math.floor(diff / 3600000)
   const days = Math.floor(diff / 86400000)
-
   if (mins < 60) return `${mins}分钟前`
   if (hours < 24) return `${hours}小时前`
   if (days < 7) return `${days}天前`
   return `${date.getMonth() + 1}/${date.getDate()}`
 }
 
+// 筛选标签
+const filters = computed(() => {
+  const all = patients.value
+  return [
+    { label: '全部', value: 'all', count: all.length, dot: '' },
+    { label: '紧急', value: 'urgent', count: all.filter(p => p.status === 'urgent').length, dot: 'dot-urgent' },
+    { label: '关注', value: 'attention', count: all.filter(p => p.status === 'attention').length, dot: 'dot-attention' },
+    { label: '平稳', value: 'stable', count: all.filter(p => p.status === 'stable').length, dot: 'dot-stable' },
+    { label: '失联', value: 'offline', count: all.filter(p => p.status === 'offline').length, dot: 'dot-offline' },
+  ]
+})
+
+// 排序：紧急→关注→平稳→失联
+const statusOrder: Record<string, number> = { urgent: 0, attention: 1, stable: 2, offline: 3 }
+
+const sortedPatients = computed(() => {
+  let list = patients.value
+  if (activeFilter.value !== 'all') {
+    list = list.filter(p => p.status === activeFilter.value)
+  }
+  return [...list].sort((a, b) => {
+    const oa = statusOrder[a.status || 'offline'] ?? 9
+    const ob = statusOrder[b.status || 'offline'] ?? 9
+    return oa - ob
+  })
+})
+
 const goToDetail = (id: number) => {
   router.push(`/patient/${id}`)
-}
-
-const loadDashboard = async () => {
-  try {
-    dashboard.value = await getRiskDashboard() as unknown as RiskDashboard
-  } catch { /* ignore */ }
 }
 
 const loadPatients = async () => {
@@ -217,32 +181,30 @@ const handleSearch = () => {
 }
 
 const onRefresh = async () => {
-  await Promise.all([loadPatients(), loadDashboard()])
+  await loadPatients()
   refreshing.value = false
 }
 
 onMounted(() => {
-  loadDashboard()
   loadPatients()
 })
 </script>
 
 <style scoped>
-/* ===== 页面基础 ===== */
 .patients-page {
   min-height: 100vh;
-  background: #F0F2F5;
-  padding-bottom: 60px;
+  background: #F2F5FA;
+  font-family: 'Inter', 'SF Pro Display', 'PingFang SC', -apple-system, sans-serif;
+  padding-bottom: 10px;
 }
 
-/* ===== 顶部固定区域 ===== */
+/* ===== 顶部固定 ===== */
 .sticky-top {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: #FFFFFF;
-  padding: 12px 16px 10px;
-  border-bottom: 1px solid #E2E8F0;
+  background: #F2F5FA;
+  padding: 12px 16px 8px;
 }
 
 /* ===== 搜索框 ===== */
@@ -250,124 +212,88 @@ onMounted(() => {
   display: flex;
   align-items: center;
   height: 40px;
-  background: #F8FAFC;
-  border-radius: 10px;
+  background: #FFFFFF;
+  border-radius: 16px;
   padding: 0 14px;
-  margin-bottom: 14px;
-  border: 1px solid #E2E8F0;
+  margin-bottom: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
 }
-.search-icon { color: #94A3B8; font-size: 16px; }
+.search-icon {
+  width: 16px;
+  height: 16px;
+  color: #8A9AC3;
+  flex-shrink: 0;
+}
 .search-input {
   flex: 1;
   border: none;
   background: transparent;
   padding: 0 10px;
   font-size: 14px;
-  color: #1E293B;
+  color: #1A2238;
   outline: none;
 }
-.search-input::placeholder { color: #94A3B8; }
-.clear-icon { color: #94A3B8; font-size: 14px; cursor: pointer; }
-
-/* ===== 预警统计块：临床降噪版 ===== */
-.warning-tiles {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 14px;
-}
-
-.tile {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 14px 8px 12px;
-  border-radius: 10px;
+.search-input::placeholder { color: #8A9AC3; }
+.clear-icon {
+  width: 16px;
+  height: 16px;
+  color: #8A9AC3;
   cursor: pointer;
-  transition: transform 0.2s ease, background 0.15s ease;
-  border: 1px solid #E2E8F0;
-  background: #FFFFFF;
-}
-.tile:active {
-  transform: scale(0.97);
-  background: #F8FAFC;
+  flex-shrink: 0;
 }
 
-.tile-header {
+/* ===== 筛选标签 ===== */
+.filter-row {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 4px;
+}
+.filter-row::-webkit-scrollbar { display: none; }
+.filter-chip {
   display: flex;
   align-items: center;
   gap: 4px;
-  margin-bottom: 6px;
-}
-
-.tile-icon {
-  font-size: 13px;
-  line-height: 1;
-  opacity: 0.9;
-}
-
-.tile-title {
+  padding: 6px 12px;
   font-size: 12px;
   font-weight: 500;
-  color: #475569;
-  letter-spacing: 0.3px;
+  color: #8A9AC3;
+  background: #FFFFFF;
+  border-radius: 20px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
 }
-
-/* 数字保留业务色 */
-.tile-num {
-  font-size: 26px;
-  font-weight: 800;
-  line-height: 1.1;
-  margin-bottom: 4px;
-  font-family: 'SF Mono', 'Menlo', Monaco, monospace;
+.filter-chip.active {
+  background: #396CFF;
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(57, 108, 255, 0.3);
 }
-.tile-glucose .tile-num { color: #B45309; }
-.tile-bp .tile-num { color: #DC2626; }
-.tile-hr .tile-num { color: #7C3AED; }
-
-.tile-sub {
-  font-size: 10px;
-  font-weight: 400;
-  color: #94A3B8;
-  letter-spacing: 0.2px;
+.filter-chip.active .chip-dot {
+  background: rgba(255, 255, 255, 0.6) !important;
 }
-
-/* ===== 统计行 ===== */
-.stats-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 12px;
-  color: #6B7280;
-  padding-top: 10px;
-  border-top: 1px solid rgba(0, 0, 0, 0.04);
-}
-.stats-bar b { color: #3B82F6; font-weight: 700; }
-
-.legend {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 10px;
-  color: #9CA3AF;
-}
-.dot {
+.chip-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  margin-left: 8px;
 }
-.dot.urgent { background: #EF4444; }
-.dot.attention { background: #F59E0B; }
-.dot.stable { background: #10B981; }
-.dot.offline { background: #9CA3AF; }
+.chip-dot.dot-urgent { background: #FF4C61; }
+.chip-dot.dot-attention { background: #F59E0B; }
+.chip-dot.dot-stable { background: #10B981; }
+.chip-dot.dot-offline { background: #B4C0DC; }
+.chip-count {
+  font-size: 11px;
+  opacity: 0.6;
+}
 
-/* ===== 列表区域 ===== */
+/* ===== 列表 ===== */
 .list-container {
-  padding: 10px 16px;
+  padding: 8px 16px;
 }
 
-/* 骨架屏 */
 .skeleton-list {
   display: flex;
   flex-direction: column;
@@ -376,15 +302,15 @@ onMounted(() => {
 .skeleton-card {
   display: flex;
   gap: 12px;
-  padding: 14px;
+  padding: 16px;
   background: #FFF;
-  border-radius: 12px;
+  border-radius: 24px;
 }
 .sk-avatar {
   width: 44px;
   height: 44px;
-  border-radius: 12px;
-  background: linear-gradient(90deg, #F3F4F6 25%, #E8E9EB 50%, #F3F4F6 75%);
+  border-radius: 16px;
+  background: linear-gradient(90deg, #E8ECF4 25%, #DDE2ED 50%, #E8ECF4 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
@@ -397,104 +323,64 @@ onMounted(() => {
 }
 .sk-line {
   height: 14px;
-  border-radius: 4px;
-  background: linear-gradient(90deg, #F3F4F6 25%, #E8E9EB 50%, #F3F4F6 75%);
+  border-radius: 6px;
+  background: linear-gradient(90deg, #E8ECF4 25%, #DDE2ED 50%, #E8ECF4 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
 .sk-line.w60 { width: 60%; }
 .sk-line.w80 { width: 80%; }
-
 @keyframes shimmer {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
 
-/* ===== 患者列表 ===== */
+/* ===== 患者卡片 ===== */
 .patient-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .patient-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px;
   background: #FFFFFF;
-  border: 1px solid #F1F5F9;
-  border-radius: 12px;
+  border-radius: 16px;
   cursor: pointer;
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, background 0.15s ease;
-  position: relative;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  transition: transform 0.15s;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.02);
 }
 .patient-card:active {
   transform: scale(0.98);
-  background: #F8FAFC;
-  box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+}
+
+.card-inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
 }
 
 /* 头像 */
 .avatar {
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  position: relative;
-  border: 2px solid transparent;
-  transition: box-shadow 0.3s ease;
 }
 .avatar-text {
-  font-size: 17px;
+  font-size: 14px;
   font-weight: 700;
   color: #FFF;
 }
+.av-urgent { background: linear-gradient(135deg, #FF4C61, #E8364A); }
+.av-attention { background: linear-gradient(135deg, #F59E0B, #D97706); }
+.av-stable { background: linear-gradient(135deg, #10B981, #059669); }
+.av-offline { background: linear-gradient(135deg, #B4C0DC, #8A9AC3); }
 
-.avatar.border-urgent {
-  border-color: #EF4444;
-  background: linear-gradient(135deg, #EF4444, #DC2626);
-  animation: urgent-glow 2s ease-in-out infinite;
-}
-.avatar.border-attention {
-  border-color: #FB923C;
-  background: linear-gradient(135deg, #F59E0B, #D97706);
-  box-shadow: 0 0 0 0 rgba(251, 146, 60, 0);
-}
-.avatar.border-stable {
-  border-color: #22C55E;
-  background: linear-gradient(135deg, #10B981, #059669);
-  box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
-}
-.avatar.border-offline {
-  border-color: #9CA3AF;
-  background: linear-gradient(135deg, #9CA3AF, #6B7280);
-}
-
-/* 紧急状态呼吸 box-shadow */
-@keyframes urgent-glow {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
-  50% { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.15); }
-}
-
-/* 呼吸灯环（保留） */
-.pulse-ring {
-  position: absolute;
-  inset: -4px;
-  border-radius: 14px;
-  border: 2px solid #EF4444;
-  animation: pulse 1.5s ease-out infinite;
-}
-@keyframes pulse {
-  0% { transform: scale(1); opacity: 0.7; }
-  100% { transform: scale(1.25); opacity: 0; }
-}
-
-/* 卡片内容 */
+/* 内容区 */
 .card-body {
   flex: 1;
   min-width: 0;
@@ -502,125 +388,89 @@ onMounted(() => {
 
 .name-row {
   display: flex;
-  align-items: baseline;
-  gap: 6px;
-  margin-bottom: 6px;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 2px;
 }
 .name {
-  font-size: 15px;
-  font-weight: 600;
-  color: #0F172A;
-}
-.age {
-  font-size: 12px;
-  color: #94A3B8;
-}
-
-.info-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-/* 预警标签 - 半透明 rgba 背景 */
-.alert-tags {
-  display: flex;
-  gap: 4px;
-}
-.tag {
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-weight: 600;
-}
-.tag-glucose { background: rgba(245, 158, 11, 0.12); color: #92400E; }
-.tag-bp { background: rgba(239, 68, 68, 0.1); color: #991B1B; }
-.tag-hr { background: rgba(139, 92, 246, 0.1); color: #5B21B6; }
-
-/* 预警数值 - 精密排版 */
-.alert-value {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 2px;
-  font-family: 'SF Mono', Monaco, monospace;
-}
-.value-num {
   font-size: 14px;
   font-weight: 700;
-  color: #0F172A;
+  color: #1A2238;
 }
-.value-unit {
-  font-size: 10px;
-  font-weight: 400;
-  color: #94A3B8;
-}
-
-/* 平稳状态徽章 */
-.stable-badge {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  color: #059669;
-  background: rgba(16, 185, 129, 0.08);
-  padding: 3px 8px;
-  border-radius: 6px;
-}
-.shield-icon {
-  font-size: 13px;
-}
-
-/* 失联徽章 */
-.offline-badge {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  color: #64748B;
-}
-
-.time {
+.age {
   font-size: 11px;
-  color: #CBD5E1;
-  margin-left: auto;
+  color: #8A9AC3;
 }
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-left: 2px;
+}
+.dot-urgent { background: #FF4C61; }
+.dot-attention { background: #F59E0B; }
+.dot-stable { background: #10B981; }
+.dot-offline { background: #B4C0DC; }
 
-/* 状态指示器 - 半透明背景 */
-.status-indicator {
-  position: absolute;
-  top: 10px;
-  right: 10px;
+/* 指标行 */
+.metric-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.metric-tag {
   font-size: 10px;
-  padding: 2px 6px;
+  padding: 1px 6px;
   border-radius: 4px;
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
-.ind-urgent { background: rgba(239, 68, 68, 0.1); color: #DC2626; }
-.ind-attention { background: rgba(245, 158, 11, 0.1); color: #B45309; }
-.ind-stable { background: rgba(16, 185, 129, 0.08); color: #059669; }
-.ind-offline { background: rgba(100, 116, 139, 0.08); color: #64748B; }
+.mt-bp { background: rgba(255, 76, 97, 0.08); color: #FF4C61; }
+.mt-glucose { background: rgba(245, 158, 11, 0.08); color: #D97706; }
+.mt-hr { background: rgba(139, 92, 246, 0.08); color: #8B5CF6; }
+
+.metric-stable {
+  font-size: 11px;
+  color: #059669;
+  font-weight: 500;
+}
+.metric-offline {
+  font-size: 11px;
+  color: #8A9AC3;
+  font-weight: 500;
+}
+
+/* 右侧时间 */
+.card-time {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: #B4C0DC;
+  text-align: right;
+}
 
 /* 空状态 */
 .empty {
   text-align: center;
   padding: 60px 0;
-  color: #9CA3AF;
+  color: #8A9AC3;
 }
-.empty-icon { font-size: 48px; margin-bottom: 12px; }
+.empty-icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 12px;
+  display: block;
+  color: #B4C0DC;
+}
+.empty p {
+  font-size: 14px;
+  margin: 0;
+}
 
 .list-end {
   text-align: center;
   padding: 16px;
   font-size: 12px;
-  color: #C8C9CC;
-}
-
-/* 底部导航 */
-.bottom-nav :deep(.van-tabbar) {
-  border-top: 1px solid #EBEDF0;
-}
-.bottom-nav :deep(.van-tabbar-item--active) {
-  color: #3B82F6;
+  color: #B4C0DC;
 }
 </style>

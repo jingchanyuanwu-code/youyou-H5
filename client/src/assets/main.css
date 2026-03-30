@@ -1,41 +1,50 @@
 /* ========== 引入 Inter 字体 ========== */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ========== CSS 变量 ========== */
+/* ========== CSS 变量 - 极致通透感设计系统 ========== */
 :root {
-  /* 主色系 */
-  --color-primary: #2C6CF5;
-  --color-primary-light: #3B82F6;
-  --color-primary-dark: #1D4ED8;
-  --color-primary-50: #EFF6FF;
-  --color-primary-100: #DBEAFE;
+  /* 品牌控制色 - 皇家蓝 */
+  --color-primary: #396CFF;
+  --color-primary-light: #5A85FF;
+  --color-primary-dark: #2A54D9;
+  --color-primary-50: #EEF2FF;
+  --color-primary-100: #DCE4FF;
 
-  /* 背景色 */
-  --bg-base: #F1F5F9;
+  /* 背景色 - 极浅冷灰蓝 (空气感) */
+  --bg-base: #F2F5FA;
   --bg-card: #FFFFFF;
+  --bg-inner: #F8FAFC;
 
-  /* 文本色 */
-  --text-primary: #1E293B;
-  --text-secondary: #475569;
-  --text-muted: #94A3B8;
-  --text-light: #CBD5E1;
+  /* 文本灰度层级 */
+  --text-primary: #1A2238;     /* 极深藏青 - 姓名/核心数据/大标题 */
+  --text-secondary: #8A9AC3;   /* 冷灰紫蓝 - 时间/单位/辅助说明 */
+  --text-muted: #8A9AC3;
+  --text-light: #B4C0DC;
 
-  /* 圆角 */
-  --radius-card: 16px;
+  /* 警示色 - 玫瑰红 */
+  --alert-critical: #FF4C61;
+
+  /* 圆角层级 */
+  --radius-outer: 24px;
+  --radius-card: 24px;
+  --radius-inner: 16px;
+  --radius-module: 12px;
+  --radius-tag: 6px;
   --radius-input: 12px;
 
   /* 间距 */
   --card-margin: 16px;
   --card-padding: 20px;
 
-  /* 阴影 */
-  --shadow-medical: 0 1px 2px rgba(30, 41, 59, 0.04), 0 4px 12px rgba(30, 41, 59, 0.06);
-  --shadow-medical-lg: 0 2px 4px rgba(30, 41, 59, 0.04), 0 8px 24px rgba(30, 41, 59, 0.08);
-  --shadow-btn-glow: 0 4px 14px rgba(44, 108, 245, 0.35);
+  /* 空气感阴影 */
+  --shadow-air: 0 4px 20px rgba(0, 0, 0, 0.02);
+  --shadow-air-lg: 0 8px 30px rgba(0, 0, 0, 0.03);
+  --shadow-brand: 0 8px 20px rgba(57, 108, 255, 0.3);
+  --shadow-btn-glow: 0 8px 20px rgba(57, 108, 255, 0.3);
 }
 
 * {
@@ -67,7 +76,7 @@ body {
 
 /* ========== Vant 组件深度覆盖 ========== */
 
-/* 主按钮：沉稳蓝 + 呼吸阴影 */
+/* 主按钮：皇家蓝 + 彩色投影 */
 .van-button--primary {
   background: var(--color-primary) !important;
   border: none !important;
@@ -81,7 +90,7 @@ body {
 
 .van-button--primary:active {
   background: var(--color-primary-dark) !important;
-  box-shadow: 0 2px 8px rgba(44, 108, 245, 0.3) !important;
+  box-shadow: 0 4px 12px rgba(57, 108, 255, 0.25) !important;
   transform: translateY(1px);
 }
 
@@ -97,7 +106,7 @@ body {
   margin: 0 !important;
   border-radius: var(--radius-input) !important;
   overflow: hidden;
-  background: #F8FAFC !important;
+  background: var(--bg-inner) !important;
 }
 
 .van-cell {
@@ -110,7 +119,7 @@ body {
 }
 
 .van-cell:not(:last-child) {
-  border-bottom: 1px solid #E2E8F0 !important;
+  border-bottom: 1px solid #E8ECF4 !important;
 }
 
 .van-field__control {
@@ -119,11 +128,11 @@ body {
 }
 
 .van-field__control::placeholder {
-  color: var(--text-muted) !important;
+  color: var(--text-secondary) !important;
 }
 
 .van-field__label {
-  color: var(--text-secondary) !important;
+  color: var(--text-primary) !important;
   font-weight: 500 !important;
   width: 70px !important;
 }
@@ -135,35 +144,35 @@ body {
 }
 
 .van-search__content {
-  background: #F8FAFC !important;
+  background: var(--bg-inner) !important;
   border-radius: var(--radius-input) !important;
-  border: 1px solid #E2E8F0 !important;
+  border: 1px solid #E8ECF4 !important;
 }
 
 .van-search__content--round {
   border-radius: var(--radius-input) !important;
 }
 
-/* 底部导航 - 毛玻璃效果 + Logo 色系 */
+/* 底部导航 - 毛玻璃效果 + 品牌蓝激活 */
 .van-tabbar {
-  background: rgba(255, 255, 255, 0.9) !important;
-  backdrop-filter: blur(20px) !important;
-  -webkit-backdrop-filter: blur(20px) !important;
-  border-top: 1px solid rgba(226, 232, 240, 0.5) !important;
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.03) !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border-top: 1px solid rgba(226, 232, 240, 0.4) !important;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.02) !important;
 }
 
 .van-tabbar-item {
-  color: #94A3B8 !important;
+  color: var(--text-secondary) !important;
   transition: color 0.25s ease !important;
 }
 
 .van-tabbar-item--active {
-  color: #7DBDE8 !important;
+  color: var(--color-primary) !important;
 }
 
 .van-tabbar-item--active .van-tabbar-item__icon {
-  color: #7DBDE8 !important;
+  color: var(--color-primary) !important;
 }
 
 /* 图标点击填充动画 */
@@ -184,8 +193,8 @@ body {
 }
 
 .van-tag--danger {
-  background: #FEF2F2 !important;
-  color: #EF4444 !important;
+  background: #FFF0F2 !important;
+  color: var(--alert-critical) !important;
   border: none !important;
   font-weight: 500 !important;
 }
@@ -204,12 +213,12 @@ body {
 
 /* 下拉选择 */
 .van-field__right-icon {
-  color: var(--text-muted) !important;
+  color: var(--text-secondary) !important;
 }
 
 /* 弹出层 */
 .van-popup--round {
-  border-radius: 16px 16px 0 0 !important;
+  border-radius: 24px 24px 0 0 !important;
 }
 
 /* 对话框 */

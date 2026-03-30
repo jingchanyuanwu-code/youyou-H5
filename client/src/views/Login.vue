@@ -172,7 +172,7 @@ const handleLogin = async () => {
     userStore.setToken(res.token)
     userStore.setDoctor(res.doctor)
     showToast('登录成功')
-    router.push('/card')
+    router.push('/d/workspace')
   } catch {
     // 错误已在拦截器处理
   } finally {
@@ -184,9 +184,9 @@ const handleLogin = async () => {
 <style scoped>
 /* ========== Logo 主色定义 ========== */
 :root {
-  --logo-primary: #7DBDE8;      /* 柔和天蓝 */
-  --logo-primary-dark: #5BA8D9; /* 深一度 */
-  --logo-accent: #F0A0B8;       /* 粉色点缀 */
+  --logo-primary: #396CFF;      /* 品牌蓝 */
+  --logo-primary-dark: #2D5CE6; /* 深一度 */
+  --logo-accent: #8DC3F0;       /* 浅蓝点缀 */
 }
 
 .login-page {
@@ -208,9 +208,9 @@ const handleLogin = async () => {
   background: radial-gradient(
     ellipse 120% 100% at 50% 0%,
     #FFFFFF 0%,
-    #F5FAFD 40%,
-    #E8F4FA 70%,
-    #DCF0F8 100%
+    #F5F8FD 40%,
+    #ECF2FA 70%,
+    #DCE8F4 100%
   );
 }
 
@@ -227,7 +227,7 @@ const handleLogin = async () => {
   right: -100px;
   width: 350px;
   height: 350px;
-  background: radial-gradient(circle, rgba(125, 189, 232, 0.25) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(74, 144, 217, 0.2) 0%, transparent 70%);
 }
 
 .glow-bottom-left {
@@ -235,7 +235,7 @@ const handleLogin = async () => {
   left: -80px;
   width: 300px;
   height: 300px;
-  background: radial-gradient(circle, rgba(240, 160, 184, 0.2) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(141, 195, 240, 0.15) 0%, transparent 70%);
 }
 
 /* 底部网格纹理 - 增加空间深度 */
@@ -246,8 +246,8 @@ const handleLogin = async () => {
   right: 0;
   height: 30%;
   background-image:
-    linear-gradient(rgba(125, 189, 232, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(125, 189, 232, 0.03) 1px, transparent 1px);
+    linear-gradient(rgba(74, 144, 217, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(74, 144, 217, 0.03) 1px, transparent 1px);
   background-size: 40px 40px;
   mask-image: linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 100%);
   -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 100%);
@@ -306,7 +306,7 @@ const handleLogin = async () => {
 .logo-image {
   height: 96px; /* h-24 */
   width: auto;
-  filter: drop-shadow(0 8px 24px rgba(125, 189, 232, 0.3));
+  filter: drop-shadow(0 8px 24px rgba(74, 144, 217, 0.3));
 }
 
 @keyframes float {
@@ -341,7 +341,7 @@ const handleLogin = async () => {
   border-radius: 24px;
   padding: 36px;
   box-shadow:
-    0 4px 24px rgba(125, 189, 232, 0.08),
+    0 4px 24px rgba(74, 144, 217, 0.08),
     0 20px 50px rgba(0, 0, 0, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.9);
 }
@@ -375,7 +375,7 @@ const handleLogin = async () => {
 
 .input-wrapper.input-focused {
   background: #FFFFFF;
-  box-shadow: 0 0 0 3px rgba(125, 189, 232, 0.15);
+  box-shadow: 0 0 0 3px rgba(74, 144, 217, 0.15);
 }
 
 .custom-input {
@@ -408,7 +408,7 @@ const handleLogin = async () => {
   flex-shrink: 0;
   height: 34px;
   padding: 0 14px;
-  background: #7DBDE8;
+  background: #396CFF;
   color: white;
   border: none;
   border-radius: 9px;
@@ -419,7 +419,7 @@ const handleLogin = async () => {
 }
 
 .code-btn:hover:not(:disabled) {
-  background: #5BA8D9;
+  background: #3978C2;
 }
 
 .code-btn:disabled {
@@ -432,7 +432,7 @@ const handleLogin = async () => {
   width: 100%;
   height: 50px;
   margin-top: 6px;
-  background: linear-gradient(135deg, #7DBDE8 0%, #5BA8D9 100%);
+  background: linear-gradient(135deg, #396CFF 0%, #2D5CE6 100%);
   color: white;
   border: none;
   border-radius: 14px;
@@ -440,7 +440,7 @@ const handleLogin = async () => {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.25s ease;
-  box-shadow: 0 8px 24px rgba(125, 189, 232, 0.35);
+  box-shadow: 0 8px 24px rgba(74, 144, 217, 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -448,7 +448,7 @@ const handleLogin = async () => {
 
 .submit-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 12px 32px rgba(125, 189, 232, 0.45);
+  box-shadow: 0 12px 32px rgba(74, 144, 217, 0.45);
 }
 
 .submit-btn:active:not(:disabled) {
@@ -486,12 +486,12 @@ const handleLogin = async () => {
 .badge-line {
   flex: 1;
   height: 1px;
-  background: linear-gradient(90deg, transparent, #D4E5F0, transparent);
+  background: linear-gradient(90deg, transparent, #B8D9F0, transparent);
 }
 
 .badge-text {
   font-size: 10px;
-  color: #A0B4C0;
+  color: #8AADC8;
   letter-spacing: 0.1em;
   white-space: nowrap;
 }
@@ -514,7 +514,7 @@ const handleLogin = async () => {
   justify-content: center;
   gap: 6px;
   font-size: 11px;
-  color: #B0C4D0;
+  color: #9ABDD5;
 }
 
 .footer-icon {

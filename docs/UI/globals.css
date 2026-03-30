@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-surface-bg text-tx-secondary antialiased;
+    /* 禁用移动端点击高亮，提升原生质感 */
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* 强制所有数字使用等宽特性 (Tabular Nums) */
+  /* 这是 FinTech 风格排版的灵魂，确保金额、血压等数字在垂直方向绝对对齐 */
+  h1, h2, h3, span, p, div {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer utilities {
+  /* 隐藏滚动条但保留滚动功能 (用于顶部标签栏) */
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* 3D 透视效果 (配合卡片 Hover 翻转使用) */
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+  .transform-style-3d {
+    transform-style: preserve-3d;
+  }
+}
